@@ -1,0 +1,1268 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚwif (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Index - ä¼˜åŒ–åçš„è‡ªé€‚åº”èƒŒæ™¯è‰²ä¸»é¡µ
+ *
+ * ä¼˜åŒ–å†…å®¹ï¼š
+ * 1. ä½¿ç”¨æ™ºèƒ½å–è‰²ç­–ç•¥ï¼Œé¿å…å¹³å‡è‰²åç°é—®é¢˜
+ * 2. èƒŒæ™¯è‰²å¹³æ»‘æ¸å˜è¿‡æ¸¡åŠ¨ç”»
+ * 3. å›¾ç‰‡æ‰‹åŠ¨åˆ‡æ¢åŠŸèƒ½
+ * 4. å›¾ç‰‡åŠ è½½çŠ¶æ€å¤„ç†
+ * 5. æ²‰æµ¸å¼çŠ¶æ€æ åŠ¨æ€é€‚é…
+ * 6. æ·±è‰²æ¨¡å¼é€‚é…
+ */
+import window from "@ohos.window";
+import image from "@ohos.multimedia.image";
+import CommonConstants from '../constants/CommonContants';
+import Logger from '../utils/Logger';
+import { ImmersiveType } from '../utils/WindowUtil';
+import deviceInfo from "@ohos.deviceInfo";
+import { ColorPickerUtil, ColorExtractStrategy } from '../utils/ColorPickerUtil';
+const TAG = '[Index]';
+/** å›¾ç‰‡åŠ è½½çŠ¶æ€æšä¸¾ */
+var ImageLoadState;
+(function (ImageLoadState) {
+    ImageLoadState[ImageLoadState["LOADING"] = 0] = "LOADING";
+    ImageLoadState[ImageLoadState["SUCCESS"] = 1] = "SUCCESS";
+    ImageLoadState[ImageLoadState["ERROR"] = 2] = "ERROR";
+})(ImageLoadState || (ImageLoadState = {}));
+class Index extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.__imgData = new ObservedPropertyObjectPU([
+            { resource: { "id": 16777229, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777230, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777231, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777232, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777233, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777234, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777235, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+            { resource: { "id": 16777236, "type": 20000, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, loadState: ImageLoadState.SUCCESS },
+        ], this, "imgData");
+        this.__currentBgColor = new ObservedPropertySimplePU(CommonConstants.START_WINDOW_BACKGROUND, this, "currentBgColor");
+        this.__targetBgColor = new ObservedPropertySimplePU(CommonConstants.START_WINDOW_BACKGROUND, this, "targetBgColor");
+        this.__currentIndex = new ObservedPropertySimplePU(0, this, "currentIndex");
+        this.__topSafeHeight = new ObservedPropertySimplePU(0, this, "topSafeHeight");
+        this.__bottomSafeHeight = new ObservedPropertySimplePU(0, this, "bottomSafeHeight");
+        this.__is2in1Device = new ObservedPropertySimplePU(false, this, "is2in1Device");
+        this.__isDarkMode = new ObservedPropertySimplePU(false, this, "isDarkMode");
+        this.__statusBarTextColor = new ObservedPropertySimplePU('#FF000000', this, "statusBarTextColor");
+        this.isProcessingColor = false;
+        this.swiperController = new SwiperController();
+        this.swiperInterval = CommonConstants.SWIPER_INTERVAL;
+        this.swiperDuration = CommonConstants.SWIPER_DURATION;
+        this.swiperItemSpace = CommonConstants.SWIPER_ITEM_SPACE;
+        this.context = this.getUIContext().getHostContext();
+        this.__currentWidthBreakpoint = this.createStorageLink(CommonConstants.KEY_PREFIX + 'currentWidthBreakpoint', 'md', "currentWidthBreakpoint");
+        this.__windowUtil = this.createStorageLink(CommonConstants.KEY_PREFIX + 'windowUtil', undefined, "windowUtil");
+        this.__colorStrategy = new ObservedPropertySimplePU(ColorExtractStrategy.SMART, this, "colorStrategy");
+        this.setInitiallyProvidedValue(params);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.imgData !== undefined) {
+            this.imgData = params.imgData;
+        }
+        if (params.currentBgColor !== undefined) {
+            this.currentBgColor = params.currentBgColor;
+        }
+        if (params.targetBgColor !== undefined) {
+            this.targetBgColor = params.targetBgColor;
+        }
+        if (params.currentIndex !== undefined) {
+            this.currentIndex = params.currentIndex;
+        }
+        if (params.topSafeHeight !== undefined) {
+            this.topSafeHeight = params.topSafeHeight;
+        }
+        if (params.bottomSafeHeight !== undefined) {
+            this.bottomSafeHeight = params.bottomSafeHeight;
+        }
+        if (params.is2in1Device !== undefined) {
+            this.is2in1Device = params.is2in1Device;
+        }
+        if (params.isDarkMode !== undefined) {
+            this.isDarkMode = params.isDarkMode;
+        }
+        if (params.statusBarTextColor !== undefined) {
+            this.statusBarTextColor = params.statusBarTextColor;
+        }
+        if (params.isProcessingColor !== undefined) {
+            this.isProcessingColor = params.isProcessingColor;
+        }
+        if (params.swiperController !== undefined) {
+            this.swiperController = params.swiperController;
+        }
+        if (params.swiperInterval !== undefined) {
+            this.swiperInterval = params.swiperInterval;
+        }
+        if (params.swiperDuration !== undefined) {
+            this.swiperDuration = params.swiperDuration;
+        }
+        if (params.swiperItemSpace !== undefined) {
+            this.swiperItemSpace = params.swiperItemSpace;
+        }
+        if (params.context !== undefined) {
+            this.context = params.context;
+        }
+        if (params.colorStrategy !== undefined) {
+            this.colorStrategy = params.colorStrategy;
+        }
+    }
+    updateStateVars(params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__imgData.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentBgColor.purgeDependencyOnElmtId(rmElmtId);
+        this.__targetBgColor.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__topSafeHeight.purgeDependencyOnElmtId(rmElmtId);
+        this.__bottomSafeHeight.purgeDependencyOnElmtId(rmElmtId);
+        this.__is2in1Device.purgeDependencyOnElmtId(rmElmtId);
+        this.__isDarkMode.purgeDependencyOnElmtId(rmElmtId);
+        this.__statusBarTextColor.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentWidthBreakpoint.purgeDependencyOnElmtId(rmElmtId);
+        this.__windowUtil.purgeDependencyOnElmtId(rmElmtId);
+        this.__colorStrategy.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__imgData.aboutToBeDeleted();
+        this.__currentBgColor.aboutToBeDeleted();
+        this.__targetBgColor.aboutToBeDeleted();
+        this.__currentIndex.aboutToBeDeleted();
+        this.__topSafeHeight.aboutToBeDeleted();
+        this.__bottomSafeHeight.aboutToBeDeleted();
+        this.__is2in1Device.aboutToBeDeleted();
+        this.__isDarkMode.aboutToBeDeleted();
+        this.__statusBarTextColor.aboutToBeDeleted();
+        this.__currentWidthBreakpoint.aboutToBeDeleted();
+        this.__windowUtil.aboutToBeDeleted();
+        this.__colorStrategy.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get imgData() {
+        return this.__imgData.get();
+    }
+    set imgData(newValue) {
+        this.__imgData.set(newValue);
+    }
+    get currentBgColor() {
+        return this.__currentBgColor.get();
+    }
+    set currentBgColor(newValue) {
+        this.__currentBgColor.set(newValue);
+    }
+    get targetBgColor() {
+        return this.__targetBgColor.get();
+    }
+    set targetBgColor(newValue) {
+        this.__targetBgColor.set(newValue);
+    }
+    get currentIndex() {
+        return this.__currentIndex.get();
+    }
+    set currentIndex(newValue) {
+        this.__currentIndex.set(newValue);
+    }
+    get topSafeHeight() {
+        return this.__topSafeHeight.get();
+    }
+    set topSafeHeight(newValue) {
+        this.__topSafeHeight.set(newValue);
+    }
+    get bottomSafeHeight() {
+        return this.__bottomSafeHeight.get();
+    }
+    set bottomSafeHeight(newValue) {
+        this.__bottomSafeHeight.set(newValue);
+    }
+    get is2in1Device() {
+        return this.__is2in1Device.get();
+    }
+    set is2in1Device(newValue) {
+        this.__is2in1Device.set(newValue);
+    }
+    get isDarkMode() {
+        return this.__isDarkMode.get();
+    }
+    set isDarkMode(newValue) {
+        this.__isDarkMode.set(newValue);
+    }
+    get statusBarTextColor() {
+        return this.__statusBarTextColor.get();
+    }
+    set statusBarTextColor(newValue) {
+        this.__statusBarTextColor.set(newValue);
+    }
+    get currentWidthBreakpoint() {
+        return this.__currentWidthBreakpoint.get();
+    }
+    set currentWidthBreakpoint(newValue) {
+        this.__currentWidthBreakpoint.set(newValue);
+    }
+    get windowUtil() {
+        return this.__windowUtil.get();
+    }
+    set windowUtil(newValue) {
+        this.__windowUtil.set(newValue);
+    }
+    get colorStrategy() {
+        return this.__colorStrategy.get();
+    }
+    set colorStrategy(newValue) {
+        this.__colorStrategy.set(newValue);
+    }
+    async aboutToAppear() {
+        Logger.info(TAG, 'aboutToAppear start');
+        // åˆå§‹åŒ–è®¾å¤‡ä¿¡æ¯
+        this.is2in1Device = deviceInfo.deviceType === '2in1';
+        // åˆå§‹åŒ–æ·±è‰²æ¨¡å¼çŠ¶æ€
+        this.initDarkMode();
+        // è®¾ç½®æ²‰æµ¸å¼çŠ¶æ€æ 
+        this.windowUtil?.setImmersiveType(ImmersiveType.IMMERSIVE);
+        this.windowUtil?.startWindowStatusListener();
+        // åˆå§‹åŒ–çª—å£ä¿¡æ¯
+        await this.initWindowInfo();
+        // åŠ è½½ç¬¬ä¸€å¼ å›¾ç‰‡çš„é¢œè‰²
+        await this.loadImageColor(0);
+    }
+    aboutToDisappear() {
+        Logger.info(TAG, 'aboutToDisappear');
+        this.windowUtil?.setImmersiveType(ImmersiveType.NORMAL);
+        this.windowUtil?.release();
+        AppStorage.delete(CommonConstants.KEY_PREFIX + 'currentWidthBreakpoint');
+        AppStorage.delete(CommonConstants.KEY_PREFIX + 'windowUtil');
+    }
+    /**
+     * åˆå§‹åŒ–æ·±è‰²æ¨¡å¼çŠ¶æ€
+     */
+    initDarkMode() {
+        try {
+            const config = this.context.resourceManager.getConfigurationSync();
+            // ä½¿ç”¨æ•°å€¼æ¯”è¾ƒåˆ¤æ–­æ·±è‰²æ¨¡å¼
+            this.isDarkMode = config.colorMode === 1; // 1: COLOR_MODE_DARK, 0: COLOR_MODE_LIGHT
+            Logger.info(TAG, `isDarkMode: ${this.isDarkMode}`);
+        }
+        catch (error) {
+            Logger.error(TAG, `initDarkMode failed: ${JSON.stringify(error)}`);
+        }
+    }
+    /**
+     * åˆå§‹åŒ–çª—å£ä¿¡æ¯
+     */
+    async initWindowInfo() {
+        try {
+            let windowHeight = await window.getLastWindow(this.context);
+            await windowHeight.setWindowLayoutFullScreen(true);
+            this.topSafeHeight = this.getUIContext().px2vp(windowHeight.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM).topRect.height);
+            this.bottomSafeHeight = this.getUIContext().px2vp(windowHeight.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR).bottomRect.height);
+        }
+        catch (error) {
+            Logger.error(TAG, `initWindowInfo failed: ${JSON.stringify(error)}`);
+        }
+    }
+    /**
+     * åŠ è½½æŒ‡å®šç´¢å¼•å›¾ç‰‡çš„é¢œè‰²
+     * @param index å›¾ç‰‡ç´¢å¼•
+     */
+    async loadImageColor(index) {
+        if (this.isProcessingColor || index < 0 || index >= this.imgData.length) {
+            return;
+        }
+        this.isProcessingColor = true;
+        try {
+            // è·å–å›¾ç‰‡PixelMap
+            const pixelMap = await this.getPixelMapFromResource(this.imgData[index].resource);
+            if (!pixelMap) {
+                Logger.error(TAG, 'Failed to get pixelMap');
+                this.isProcessingColor = false;
+                return;
+            }
+            // ä½¿ç”¨ColorPickerUtilæå–é¢œè‰²
+            const result = await ColorPickerUtil.extractColorFromPixelMap(pixelMap, this.colorStrategy);
+            // æ ¹æ®æ·±è‰²æ¨¡å¼è°ƒæ•´é¢œè‰²
+            let finalColor = ColorPickerUtil.adjustColorForTheme(result.color, this.isDarkMode);
+            let finalHex = ColorPickerUtil.colorToHex(finalColor);
+            // æ›´æ–°çŠ¶æ€æ æ–‡å­—é¢œè‰²
+            this.statusBarTextColor = ColorPickerUtil.getContrastColor(finalColor);
+            // ä½¿ç”¨åŠ¨ç”»è¿‡æ¸¡åˆ°æ–°é¢œè‰²
+            this.transitionToNewColor(finalHex);
+            // é‡Šæ”¾èµ„æº
+            pixelMap.release();
+            // æ›´æ–°å›¾ç‰‡åŠ è½½çŠ¶æ€
+            this.imgData[index].loadState = ImageLoadState.SUCCESS;
+            Logger.info(TAG, `Color extracted: ${finalHex}, confidence: ${result.confidence}`);
+        }
+        catch (error) {
+            Logger.error(TAG, `loadImageColor failed: ${JSON.stringify(error)}`);
+            this.imgData[index].loadState = ImageLoadState.ERROR;
+        }
+        finally {
+            this.isProcessingColor = false;
+        }
+    }
+    /**
+     * ä»Resourceè·å–PixelMap
+     */
+    async getPixelMapFromResource(resource) {
+        try {
+            const resourceMgr = this.context.resourceManager;
+            const fileData = await resourceMgr.getMediaContent(resource.id);
+            const buffer = fileData.buffer;
+            const imageSource = image.createImageSource(buffer);
+            const pixelMap = await imageSource.createPixelMap();
+            imageSource.release();
+            return pixelMap;
+        }
+        catch (error) {
+            Logger.error(TAG, `getPixelMapFromResource failed: ${JSON.stringify(error)}`);
+            return null;
+        }
+    }
+    /**
+     * ä½¿ç”¨åŠ¨ç”»è¿‡æ¸¡åˆ°æ–°é¢œè‰²
+     */
+    transitionToNewColor(newColor) {
+        this.targetBgColor = newColor;
+        this.getUIContext().animateTo({
+            duration: CommonConstants.COLOR_TRANSITION_DURATION,
+            curve: CommonConstants.COLOR_TRANSITION_CURVE,
+            onFinish: () => {
+                this.currentBgColor = this.targetBgColor;
+            }
+        }, () => {
+            this.currentBgColor = newColor;
+        });
+    }
+    /**
+     * æ‰‹åŠ¨åˆ‡æ¢åˆ°ä¸Šä¸€å¼ å›¾ç‰‡
+     */
+    showPreviousImage() {
+        this.swiperController.showPrevious();
+    }
+    /**
+     * æ‰‹åŠ¨åˆ‡æ¢åˆ°ä¸‹ä¸€å¼ å›¾ç‰‡
+     */
+    showNextImage() {
+        this.swiperController.showNext();
+    }
+    /**
+     * åˆ‡æ¢å–è‰²ç­–ç•¥
+     */
+    cycleColorStrategy() {
+        const strategies = [
+            ColorExtractStrategy.SMART,
+            ColorExtractStrategy.MAIN_COLOR,
+            ColorExtractStrategy.LARGEST_PROPORTION,
+            ColorExtractStrategy.HIGHEST_SATURATION,
+            ColorExtractStrategy.TOP_PROPORTION
+        ];
+        const currentIndex = strategies.indexOf(this.colorStrategy);
+        this.colorStrategy = strategies[(currentIndex + 1) % strategies.length];
+        // é‡æ–°æå–å½“å‰å›¾ç‰‡é¢œè‰²
+        this.loadImageColor(this.currentIndex);
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.width(CommonConstants.FULL_PARENT);
+            Column.height(CommonConstants.FULL_PARENT);
+            Column.linearGradient({
+                direction: GradientDirection.Bottom,
+                colors: [
+                    [this.currentBgColor, CommonConstants.START_GRADIENT_RANGE],
+                    [this.isDarkMode ? '#FF1A1A1A' : Color.White, CommonConstants.END_GRADIENT_RANGE]
+                ]
+            });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // é¡¶éƒ¨çŠ¶æ€æ å ä½
+            Row.create();
+            // é¡¶éƒ¨çŠ¶æ€æ å ä½
+            Row.width('100%');
+            // é¡¶éƒ¨çŠ¶æ€æ å ä½
+            Row.height(this.topSafeHeight);
+            // é¡¶éƒ¨çŠ¶æ€æ å ä½
+            Row.backgroundColor(this.currentBgColor);
+        }, Row);
+        // é¡¶éƒ¨çŠ¶æ€æ å ä½
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // Swiperå›¾ç‰‡è½®æ’­
+            Stack.create({ alignContent: Alignment.Center });
+            // Swiperå›¾ç‰‡è½®æ’­
+            Stack.layoutWeight(1);
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Swiper.create(this.swiperController);
+            Swiper.width(CommonConstants.FULL_PARENT);
+            Swiper.height(this.currentWidthBreakpoint === 'lg' || this.currentWidthBreakpoint === 'xl'
+                ? 'calc(100% - 16vp)' : 'auto');
+            Swiper.padding({ left: { "id": 16777221, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }, right: { "id": 16777222, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" } });
+            Swiper.autoPlay(true);
+            Swiper.interval(this.swiperInterval);
+            Swiper.duration(this.swiperDuration);
+            Swiper.loop(true);
+            Swiper.itemSpace(this.swiperItemSpace);
+            Swiper.indicator(false);
+            Swiper.onChange((index) => {
+                this.currentIndex = index;
+                this.loadImageColor(index);
+            });
+        }, Swiper);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            ForEach.create();
+            const forEachItemGenFunction = (_item, index) => {
+                const item = _item;
+                this.ImageItemBuilder.bind(this)(item, index);
+            };
+            this.forEachUpdateFunction(elmtId, this.imgData, forEachItemGenFunction, (item, index) => index.toString(), true, true);
+        }, ForEach);
+        ForEach.pop();
+        Swiper.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å·¦å³åˆ‡æ¢æŒ‰é’®
+            Row.create();
+            // å·¦å³åˆ‡æ¢æŒ‰é’®
+            Row.width('100%');
+            // å·¦å³åˆ‡æ¢æŒ‰é’®
+            Row.padding({ left: 20, right: 20 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å·¦ç®­å¤´
+            Button.createWithChild({ type: ButtonType.Circle });
+            // å·¦ç®­å¤´
+            Button.width(40);
+            // å·¦ç®­å¤´
+            Button.height(40);
+            // å·¦ç®­å¤´
+            Button.backgroundColor('#66000000');
+            // å·¦ç®­å¤´
+            Button.onClick(() => this.showPreviousImage());
+        }, Button);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('<');
+            Text.fontColor(Color.White);
+            Text.fontSize(24);
+            Text.fontWeight(FontWeight.Bold);
+        }, Text);
+        Text.pop();
+        // å·¦ç®­å¤´
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Blank.create();
+            Blank.layoutWeight(1);
+        }, Blank);
+        Blank.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å³ç®­å¤´
+            Button.createWithChild({ type: ButtonType.Circle });
+            // å³ç®­å¤´
+            Button.width(40);
+            // å³ç®­å¤´
+            Button.height(40);
+            // å³ç®­å¤´
+            Button.backgroundColor('#66000000');
+            // å³ç®­å¤´
+            Button.onClick(() => this.showNextImage());
+        }, Button);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('>');
+            Text.fontColor(Color.White);
+            Text.fontSize(24);
+            Text.fontWeight(FontWeight.Bold);
+        }, Text);
+        Text.pop();
+        // å³ç®­å¤´
+        Button.pop();
+        // å·¦å³åˆ‡æ¢æŒ‰é’®
+        Row.pop();
+        // Swiperå›¾ç‰‡è½®æ’­
+        Stack.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+            Row.create();
+            // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+            Row.width('100%');
+            // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+            Row.height(50);
+            // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+            Row.padding({ left: 20, right: 20 });
+            // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+            Row.backgroundColor(this.currentBgColor);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // é¡µç æŒ‡ç¤º
+            Text.create(`${this.currentIndex + 1} / ${this.imgData.length}`);
+            // é¡µç æŒ‡ç¤º
+            Text.fontColor(Color.White);
+            // é¡µç æŒ‡ç¤º
+            Text.fontSize(14);
+        }, Text);
+        // é¡µç æŒ‡ç¤º
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Blank.create();
+            Blank.layoutWeight(1);
+        }, Blank);
+        Blank.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+            Button.createWithLabel(this.getStrategyName());
+            // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+            Button.fontSize(12);
+            // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+            Button.height(32);
+            // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+            Button.backgroundColor('#66000000');
+            // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+            Button.onClick(() => this.cycleColorStrategy());
+        }, Button);
+        // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+        Button.pop();
+        // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // åº•éƒ¨å®‰å…¨åŒºåŸŸ
+            Row.create();
+            // åº•éƒ¨å®‰å…¨åŒºåŸŸ
+            Row.width('100%');
+            // åº•éƒ¨å®‰å…¨åŒºåŸŸ
+            Row.height(this.bottomSafeHeight);
+            // åº•éƒ¨å®‰å…¨åŒºåŸŸ
+            Row.backgroundColor(this.currentBgColor);
+        }, Row);
+        // åº•éƒ¨å®‰å…¨åŒºåŸŸ
+        Row.pop();
+        Column.pop();
+    }
+    /**
+     * å›¾ç‰‡é¡¹æ„å»ºå™¨
+     */
+    ImageItemBuilder(item, index, parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Stack.create();
+            Stack.width('100%');
+            Stack.height('100%');
+            Stack.margin({
+                top: this.is2in1Device ? { "id": 16777219, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" } : { "id": 16777220, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" }
+            });
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            if (item.loadState === ImageLoadState.LOADING) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // åŠ è½½ä¸­çŠ¶æ€
+                        Column.create();
+                        // åŠ è½½ä¸­çŠ¶æ€
+                        Column.width('100%');
+                        // åŠ è½½ä¸­çŠ¶æ€
+                        Column.height('100%');
+                        // åŠ è½½ä¸­çŠ¶æ€
+                        Column.justifyContent(FlexAlign.Center);
+                        // åŠ è½½ä¸­çŠ¶æ€
+                        Column.backgroundColor(CommonConstants.LOADING_BG_COLOR);
+                        // åŠ è½½ä¸­çŠ¶æ€
+                        Column.borderRadius({ "id": 16777218, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" });
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        LoadingProgress.create();
+                        LoadingProgress.width(50);
+                        LoadingProgress.height(50);
+                        LoadingProgress.color(Color.White);
+                    }, LoadingProgress);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('åŠ è½½ä¸­...');
+                        Text.fontColor(Color.White);
+                        Text.fontSize(14);
+                        Text.margin({ top: 10 });
+                    }, Text);
+                    Text.pop();
+                    // åŠ è½½ä¸­çŠ¶æ€
+                    Column.pop();
+                });
+            }
+            else if (item.loadState === ImageLoadState.ERROR) {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // åŠ è½½å¤±è´¥çŠ¶æ€
+                        Column.create();
+                        // åŠ è½½å¤±è´¥çŠ¶æ€
+                        Column.width('100%');
+                        // åŠ è½½å¤±è´¥çŠ¶æ€
+                        Column.height('100%');
+                        // åŠ è½½å¤±è´¥çŠ¶æ€
+                        Column.justifyContent(FlexAlign.Center);
+                        // åŠ è½½å¤±è´¥çŠ¶æ€
+                        Column.backgroundColor(CommonConstants.ERROR_BG_COLOR);
+                        // åŠ è½½å¤±è´¥çŠ¶æ€
+                        Column.borderRadius({ "id": 16777218, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" });
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('åŠ è½½å¤±è´¥');
+                        Text.fontColor(Color.Red);
+                        Text.fontSize(16);
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('é‡è¯•');
+                        Button.margin({ top: 10 });
+                        Button.onClick(() => {
+                            item.loadState = ImageLoadState.LOADING;
+                            this.loadImageColor(index);
+                        });
+                    }, Button);
+                    Button.pop();
+                    // åŠ è½½å¤±è´¥çŠ¶æ€
+                    Column.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(2, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // åŠ è½½æˆåŠŸ
+                        Image.create(item.resource);
+                        // åŠ è½½æˆåŠŸ
+                        Image.width('100%');
+                        // åŠ è½½æˆåŠŸ
+                        Image.height('100%');
+                        // åŠ è½½æˆåŠŸ
+                        Image.objectFit(ImageFit.Contain);
+                        // åŠ è½½æˆåŠŸ
+                        Image.borderRadius({ "id": 16777218, "type": 10007, params: [], "bundleName": "com.example.effectkit", "moduleName": "effectkitsample" });
+                        // åŠ è½½æˆåŠŸ
+                        Image.onComplete(() => {
+                            if (item.loadState === ImageLoadState.LOADING) {
+                                item.loadState = ImageLoadState.SUCCESS;
+                            }
+                        });
+                        // åŠ è½½æˆåŠŸ
+                        Image.onError(() => {
+                            item.loadState = ImageLoadState.ERROR;
+                        });
+                    }, Image);
+                });
+            }
+        }, If);
+        If.pop();
+        Stack.pop();
+    }
+    /**
+     * è·å–å½“å‰å–è‰²ç­–ç•¥åç§°
+     */
+    getStrategyName() {
+        switch (this.colorStrategy) {
+            case ColorExtractStrategy.SMART:
+                return 'æ™ºèƒ½å–è‰²';
+            case ColorExtractStrategy.MAIN_COLOR:
+                return 'ä¸»è‰²è°ƒ';
+            case ColorExtractStrategy.LARGEST_PROPORTION:
+                return 'å æ¯”æœ€å¤š';
+            case ColorExtractStrategy.HIGHEST_SATURATION:
+                return 'é¥±å’Œåº¦æœ€é«˜';
+            case ColorExtractStrategy.TOP_PROPORTION:
+                return 'å‰Né¢œè‰²';
+            default:
+                return 'æ™ºèƒ½å–è‰²';
+        }
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+    static getEntryName() {
+        return "Index";
+    }
+}
+registerNamedRoute(() => new Index(undefined, {}), "", { bundleName: "com.example.effectkit", moduleName: "effectkitsample", pagePath: "pages/Index", pageFullPath: "entry/src/main/ets/pages/Index", integratedHsp: "false", moduleType: "followWithHap" });
+//# sourceMappingURL=Index.js.mapÂ—Ùf hvigor_ignore_C:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.window.d.tsÙp hvigor_ignore_C:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.multimedia.image.d.tsÙFD:\f\effect-kit-master\entry\src\main\ets\constants\CommonContants.etsÙ:D:\f\effect-kit-master\entry\src\main\ets\utils\Logger.etsÙ>D:\f\effect-kit-master\entry\src\main\ets\utils\WindowUtil.etsÙj hvigor_ignore_C:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.deviceInfo.d.tsÙCD:\f\effect-kit-master\entry\src\main\ets\utils\ColorPickerUtil.etsÙ9D:\f\effect-kit-master\entry\src\main\ets\pages\Index.etsÔrBšªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath¬shouldEmitJs¯effectkitsampleÃÂ¼D:\f\effect-kit-master\entry¶D:\f\effect-kit-master¯effectkitsample¥1.0.0Ô  ¼D:\f\effect-kit-master\entryÃÃÚ;/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Index - ä¼˜åŒ–åçš„è‡ªé€‚åº”èƒŒæ™¯è‰²ä¸»é¡µ
+ * 
+ * ä¼˜åŒ–å†…å®¹ï¼š
+ * 1. ä½¿ç”¨æ™ºèƒ½å–è‰²ç­–ç•¥ï¼Œé¿å…å¹³å‡è‰²åç°é—®é¢˜
+ * 2. èƒŒæ™¯è‰²å¹³æ»‘æ¸å˜è¿‡æ¸¡åŠ¨ç”»
+ * 3. å›¾ç‰‡æ‰‹åŠ¨åˆ‡æ¢åŠŸèƒ½
+ * 4. å›¾ç‰‡åŠ è½½çŠ¶æ€å¤„ç†
+ * 5. æ²‰æµ¸å¼çŠ¶æ€æ åŠ¨æ€é€‚é…
+ * 6. æ·±è‰²æ¨¡å¼é€‚é…
+ */
+
+import { window } from '@kit.ArkUI';
+import { resourceManager } from '@kit.LocalizationKit';
+import { image } from '@kit.ImageKit';
+import { effectKit } from '@kit.ArkGraphics2D';
+import CommonConstants from '../constants/CommonContants';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { common, ConfigurationConstant } from '@kit.AbilityKit';
+import Logger from '../utils/Logger';
+import { ImmersiveType, WindowUtil } from '../utils/WindowUtil';
+import { deviceInfo } from '@kit.BasicServicesKit';
+import {
+  ColorPickerUtil,
+  ColorExtractStrategy,
+  ColorInfo,
+  ColorExtractResult
+} from '../utils/ColorPickerUtil';
+
+const TAG: string = '[Index]';
+
+/** å›¾ç‰‡åŠ è½½çŠ¶æ€æšä¸¾ */
+enum ImageLoadState {
+  LOADING,
+  SUCCESS,
+  ERROR
+}
+
+/** å›¾ç‰‡é¡¹æ¥å£ */
+interface ImageItem {
+  resource: Resource;
+  loadState: ImageLoadState;
+}
+
+@Entry
+@Component
+struct Index {
+  // å›¾ç‰‡æ•°æ® - åˆå§‹çŠ¶æ€ä¸ºSUCCESSï¼Œå›¾ç‰‡ä¼šç›´æ¥æ˜¾ç¤º
+  @State imgData: ImageItem[] = [
+    { resource: $r('app.media.image1'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image2'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image3'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image4'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image5'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image6'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image7'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image8'), loadState: ImageLoadState.SUCCESS },
+  ];
+  
+  // å½“å‰èƒŒæ™¯è‰²ï¼ˆç”¨äºæ¸å˜ï¼‰
+  @State currentBgColor: string = CommonConstants.START_WINDOW_BACKGROUND;
+  // ç›®æ ‡èƒŒæ™¯è‰²ï¼ˆç”¨äºæ¸å˜åŠ¨ç”»ï¼‰
+  @State targetBgColor: string = CommonConstants.START_WINDOW_BACKGROUND;
+  // å½“å‰Swiperç´¢å¼•
+  @State currentIndex: number = 0;
+  // å®‰å…¨åŒºåŸŸé«˜åº¦
+  @State topSafeHeight: number = 0;
+  @State bottomSafeHeight: number = 0;
+  // è®¾å¤‡ç±»å‹
+  @State is2in1Device: boolean = false;
+  // æ˜¯å¦ä¸ºæ·±è‰²æ¨¡å¼
+  @State isDarkMode: boolean = false;
+  // çŠ¶æ€æ æ–‡å­—é¢œè‰²ï¼ˆæ ¹æ®èƒŒæ™¯è‰²åŠ¨æ€è°ƒæ•´ï¼‰
+  @State statusBarTextColor: string = '#FF000000';
+  // æ˜¯å¦æ­£åœ¨å¤„ç†é¢œè‰²æå–
+  private isProcessingColor: boolean = false;
+  
+  // Swiperæ§åˆ¶å™¨
+  private swiperController: SwiperController = new SwiperController();
+  // é…ç½®å‚æ•°
+  private swiperInterval: number = CommonConstants.SWIPER_INTERVAL;
+  private swiperDuration: number = CommonConstants.SWIPER_DURATION;
+  private swiperItemSpace: number = CommonConstants.SWIPER_ITEM_SPACE;
+  // ä¸Šä¸‹æ–‡
+  private context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+  // å“åº”å¼æ–­ç‚¹
+  @StorageLink(CommonConstants.KEY_PREFIX + 'currentWidthBreakpoint') currentWidthBreakpoint: string = 'md';
+  @StorageLink(CommonConstants.KEY_PREFIX + 'windowUtil') windowUtil: WindowUtil | undefined = undefined;
+  
+  // å–è‰²ç­–ç•¥ï¼ˆå¯é€šè¿‡UIåˆ‡æ¢ï¼‰
+  @State colorStrategy: ColorExtractStrategy = ColorExtractStrategy.SMART;
+
+  async aboutToAppear() {
+    Logger.info(TAG, 'aboutToAppear start');
+    
+    // åˆå§‹åŒ–è®¾å¤‡ä¿¡æ¯
+    this.is2in1Device = deviceInfo.deviceType === '2in1';
+    
+    // åˆå§‹åŒ–æ·±è‰²æ¨¡å¼çŠ¶æ€
+    this.initDarkMode();
+    
+    // è®¾ç½®æ²‰æµ¸å¼çŠ¶æ€æ 
+    this.windowUtil?.setImmersiveType(ImmersiveType.IMMERSIVE);
+    this.windowUtil?.startWindowStatusListener();
+    
+    // åˆå§‹åŒ–çª—å£ä¿¡æ¯
+    await this.initWindowInfo();
+    
+    // åŠ è½½ç¬¬ä¸€å¼ å›¾ç‰‡çš„é¢œè‰²
+    await this.loadImageColor(0);
+  }
+
+  aboutToDisappear(): void {
+    Logger.info(TAG, 'aboutToDisappear');
+    this.windowUtil?.setImmersiveType(ImmersiveType.NORMAL);
+    this.windowUtil?.release();
+    AppStorage.delete(CommonConstants.KEY_PREFIX + 'currentWidthBreakpoint');
+    AppStorage.delete(CommonConstants.KEY_PREFIX + 'windowUtil');
+  }
+
+  /**
+   * åˆå§‹åŒ–æ·±è‰²æ¨¡å¼çŠ¶æ€
+   */
+  private initDarkMode(): void {
+    try {
+      const config = this.context.resourceManager.getConfigurationSync();
+      // ä½¿ç”¨æ•°å€¼æ¯”è¾ƒåˆ¤æ–­æ·±è‰²æ¨¡å¼
+      this.isDarkMode = config.colorMode === 1; // 1: COLOR_MODE_DARK, 0: COLOR_MODE_LIGHT
+      Logger.info(TAG, `isDarkMode: ${this.isDarkMode}`);
+    } catch (error) {
+      Logger.error(TAG, `initDarkMode failed: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * åˆå§‹åŒ–çª—å£ä¿¡æ¯
+   */
+  private async initWindowInfo(): Promise<void> {
+    try {
+      let windowHeight: window.Window = await window.getLastWindow(this.context);
+      await windowHeight.setWindowLayoutFullScreen(true);
+      this.topSafeHeight = this.getUIContext().px2vp(
+        windowHeight.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM).topRect.height
+      );
+      this.bottomSafeHeight = this.getUIContext().px2vp(
+        windowHeight.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR).bottomRect.height
+      );
+    } catch (error) {
+      Logger.error(TAG, `initWindowInfo failed: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * åŠ è½½æŒ‡å®šç´¢å¼•å›¾ç‰‡çš„é¢œè‰²
+   * @param index å›¾ç‰‡ç´¢å¼•
+   */
+  private async loadImageColor(index: number): Promise<void> {
+    if (this.isProcessingColor || index < 0 || index >= this.imgData.length) {
+      return;
+    }
+    
+    this.isProcessingColor = true;
+    
+    try {
+      // è·å–å›¾ç‰‡PixelMap
+      const pixelMap = await this.getPixelMapFromResource(this.imgData[index].resource);
+      if (!pixelMap) {
+        Logger.error(TAG, 'Failed to get pixelMap');
+        this.isProcessingColor = false;
+        return;
+      }
+
+      // ä½¿ç”¨ColorPickerUtilæå–é¢œè‰²
+      const result: ColorExtractResult = await ColorPickerUtil.extractColorFromPixelMap(
+        pixelMap,
+        this.colorStrategy
+      );
+
+      // æ ¹æ®æ·±è‰²æ¨¡å¼è°ƒæ•´é¢œè‰²
+      let finalColor = ColorPickerUtil.adjustColorForTheme(result.color, this.isDarkMode);
+      let finalHex = ColorPickerUtil.colorToHex(finalColor);
+
+      // æ›´æ–°çŠ¶æ€æ æ–‡å­—é¢œè‰²
+      this.statusBarTextColor = ColorPickerUtil.getContrastColor(finalColor);
+
+      // ä½¿ç”¨åŠ¨ç”»è¿‡æ¸¡åˆ°æ–°é¢œè‰²
+      this.transitionToNewColor(finalHex);
+
+      // é‡Šæ”¾èµ„æº
+      pixelMap.release();
+      
+      // æ›´æ–°å›¾ç‰‡åŠ è½½çŠ¶æ€
+      this.imgData[index].loadState = ImageLoadState.SUCCESS;
+
+      Logger.info(TAG, `Color extracted: ${finalHex}, confidence: ${result.confidence}`);
+
+    } catch (error) {
+      Logger.error(TAG, `loadImageColor failed: ${JSON.stringify(error)}`);
+      this.imgData[index].loadState = ImageLoadState.ERROR;
+    } finally {
+      this.isProcessingColor = false;
+    }
+  }
+
+  /**
+   * ä»Resourceè·å–PixelMap
+   */
+  private async getPixelMapFromResource(resource: Resource): Promise<image.PixelMap | null> {
+    try {
+      const resourceMgr: resourceManager.ResourceManager = this.context.resourceManager;
+      const fileData: Uint8Array = await resourceMgr.getMediaContent(resource.id);
+      const buffer = fileData.buffer as ArrayBuffer;
+      const imageSource: image.ImageSource = image.createImageSource(buffer);
+      const pixelMap: image.PixelMap = await imageSource.createPixelMap();
+      imageSource.release();
+      return pixelMap;
+    } catch (error) {
+      Logger.error(TAG, `getPixelMapFromResource failed: ${JSON.stringify(error)}`);
+      return null;
+    }
+  }
+
+  /**
+   * ä½¿ç”¨åŠ¨ç”»è¿‡æ¸¡åˆ°æ–°é¢œè‰²
+   */
+  private transitionToNewColor(newColor: string): void {
+    this.targetBgColor = newColor;
+    
+    this.getUIContext().animateTo({
+      duration: CommonConstants.COLOR_TRANSITION_DURATION,
+      curve: CommonConstants.COLOR_TRANSITION_CURVE,
+      onFinish: () => {
+        this.currentBgColor = this.targetBgColor;
+      }
+    }, () => {
+      this.currentBgColor = newColor;
+    });
+  }
+
+  /**
+   * æ‰‹åŠ¨åˆ‡æ¢åˆ°ä¸Šä¸€å¼ å›¾ç‰‡
+   */
+  private showPreviousImage(): void {
+    this.swiperController.showPrevious();
+  }
+
+  /**
+   * æ‰‹åŠ¨åˆ‡æ¢åˆ°ä¸‹ä¸€å¼ å›¾ç‰‡
+   */
+  private showNextImage(): void {
+    this.swiperController.showNext();
+  }
+
+  /**
+   * åˆ‡æ¢å–è‰²ç­–ç•¥
+   */
+  private cycleColorStrategy(): void {
+    const strategies = [
+      ColorExtractStrategy.SMART,
+      ColorExtractStrategy.MAIN_COLOR,
+      ColorExtractStrategy.LARGEST_PROPORTION,
+      ColorExtractStrategy.HIGHEST_SATURATION,
+      ColorExtractStrategy.TOP_PROPORTION
+    ];
+    const currentIndex = strategies.indexOf(this.colorStrategy);
+    this.colorStrategy = strategies[(currentIndex + 1) % strategies.length];
+    
+    // é‡æ–°æå–å½“å‰å›¾ç‰‡é¢œè‰²
+    this.loadImageColor(this.currentIndex);
+  }
+
+  build() {
+    Column() {
+      // é¡¶éƒ¨çŠ¶æ€æ å ä½
+      Row()
+        .width('100%')
+        .height(this.topSafeHeight)
+        .backgroundColor(this.currentBgColor)
+
+      // Swiperå›¾ç‰‡è½®æ’­
+      Stack({ alignContent: Alignment.Center }) {
+        Swiper(this.swiperController) {
+          ForEach(this.imgData, (item: ImageItem, index: number) => {
+            this.ImageItemBuilder(item, index);
+          }, (item: ImageItem, index: number) => index.toString())
+        }
+        .width(CommonConstants.FULL_PARENT)
+        .height(this.currentWidthBreakpoint === 'lg' || this.currentWidthBreakpoint === 'xl' 
+          ? 'calc(100% - 16vp)' : 'auto')
+        .padding({ left: $r('app.integer.swiper_padding_left'), right: $r('app.integer.swiper_padding_right') })
+        .autoPlay(true)
+        .interval(this.swiperInterval)
+        .duration(this.swiperDuration)
+        .loop(true)
+        .itemSpace(this.swiperItemSpace)
+        .indicator(false)
+        .onChange((index: number) => {
+          this.currentIndex = index;
+          this.loadImageColor(index);
+        })
+
+        // å·¦å³åˆ‡æ¢æŒ‰é’®
+        Row() {
+          // å·¦ç®­å¤´
+          Button({ type: ButtonType.Circle }) {
+            Text('<')
+              .fontColor(Color.White)
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+          }
+          .width(40)
+          .height(40)
+          .backgroundColor('#66000000')
+          .onClick(() => this.showPreviousImage())
+
+          Blank().layoutWeight(1)
+
+          // å³ç®­å¤´
+          Button({ type: ButtonType.Circle }) {
+            Text('>')
+              .fontColor(Color.White)
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+          }
+          .width(40)
+          .height(40)
+          .backgroundColor('#66000000')
+          .onClick(() => this.showNextImage())
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20 })
+      }
+      .layoutWeight(1)
+
+      // åº•éƒ¨æŒ‡ç¤ºå™¨å’Œæ§åˆ¶åŒº
+      Row() {
+        // é¡µç æŒ‡ç¤º
+        Text(`${this.currentIndex + 1} / ${this.imgData.length}`)
+          .fontColor(Color.White)
+          .fontSize(14)
+
+        Blank().layoutWeight(1)
+
+        // å–è‰²ç­–ç•¥åˆ‡æ¢æŒ‰é’®
+        Button(this.getStrategyName())
+          .fontSize(12)
+          .height(32)
+          .backgroundColor('#66000000')
+          .onClick(() => this.cycleColorStrategy())
+      }
+      .width('100%')
+      .height(50)
+      .padding({ left: 20, right: 20 })
+      .backgroundColor(this.currentBgColor)
+
+      // åº•éƒ¨å®‰å…¨åŒºåŸŸ
+      Row()
+        .width('100%')
+        .height(this.bottomSafeHeight)
+        .backgroundColor(this.currentBgColor)
+    }
+    .width(CommonConstants.FULL_PARENT)
+    .height(CommonConstants.FULL_PARENT)
+    .linearGradient({
+      direction: GradientDirection.Bottom,
+      colors: [
+        [this.currentBgColor, CommonConstants.START_GRADIENT_RANGE],
+        [this.isDarkMode ? '#FF1A1A1A' : Color.White, CommonConstants.END_GRADIENT_RANGE]
+      ]
+    })
+  }
+
+  /**
+   * å›¾ç‰‡é¡¹æ„å»ºå™¨
+   */
+  @Builder
+  ImageItemBuilder(item: ImageItem, index: number) {
+    Stack() {
+      if (item.loadState === ImageLoadState.LOADING) {
+        // åŠ è½½ä¸­çŠ¶æ€
+        Column() {
+          LoadingProgress()
+            .width(50)
+            .height(50)
+            .color(Color.White)
+          Text('åŠ è½½ä¸­...')
+            .fontColor(Color.White)
+            .fontSize(14)
+            .margin({ top: 10 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(CommonConstants.LOADING_BG_COLOR)
+        .borderRadius($r('app.integer.image_borderRadius'))
+      } else if (item.loadState === ImageLoadState.ERROR) {
+        // åŠ è½½å¤±è´¥çŠ¶æ€
+        Column() {
+          Text('åŠ è½½å¤±è´¥')
+            .fontColor(Color.Red)
+            .fontSize(16)
+          Button('é‡è¯•')
+            .margin({ top: 10 })
+            .onClick(() => {
+              item.loadState = ImageLoadState.LOADING;
+              this.loadImageColor(index);
+            })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(CommonConstants.ERROR_BG_COLOR)
+        .borderRadius($r('app.integer.image_borderRadius'))
+      } else {
+        // åŠ è½½æˆåŠŸ
+        Image(item.resource)
+          .width('100%')
+          .height('100%')
+          .objectFit(ImageFit.Contain)
+          .borderRadius($r('app.integer.image_borderRadius'))
+          .onComplete(() => {
+            if (item.loadState === ImageLoadState.LOADING) {
+              item.loadState = ImageLoadState.SUCCESS;
+            }
+          })
+          .onError(() => {
+            item.loadState = ImageLoadState.ERROR;
+          })
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .margin({
+      top: this.is2in1Device ? $r('app.integer.image_margin_big_top') : $r('app.integer.image_margin_top')
+    })
+  }
+
+  /**
+   * è·å–å½“å‰å–è‰²ç­–ç•¥åç§°
+   */
+  private getStrategyName(): string {
+    switch (this.colorStrategy) {
+      case ColorExtractStrategy.SMART:
+        return 'æ™ºèƒ½å–è‰²';
+      case ColorExtractStrategy.MAIN_COLOR:
+        return 'ä¸»è‰²è°ƒ';
+      case ColorExtractStrategy.LARGEST_PROPORTION:
+        return 'å æ¯”æœ€å¤š';
+      case ColorExtractStrategy.HIGHEST_SATURATION:
+        return 'é¥±å’Œåº¦æœ€é«˜';
+      case ColorExtractStrategy.TOP_PROPORTION:
+        return 'å‰Né¢œè‰²';
+      default:
+        return 'æ™ºèƒ½å–è‰²';
+    }
+  }
+}
+ÀÔrC—¬@ohos.window¶@ohos.multimedia.image°@ohos.deviceInfo³../utils/WindowUtil¸../utils/ColorPickerUtil¯../utils/Logger»../constants/CommonContantsÔrD—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙf hvigor_ignore_C:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.window.d.tsÔrE‘¯hostModulesInfo“ÔrF’²hostDependencyName®hostModuleName¬@ohos.window¯effectkitsampleF¬@ohos.window¯effectkitsampleF¬@ohos.window¯effectkitsampleÃªoh-resolveÂDAÃÙp hvigor_ignore_C:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.multimedia.image.d.tsE‘F¶@ohos.multimedia.image¯effectkitsampleÃªoh-resolveÂDAÃÙj hvigor_ignore_C:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.deviceInfo.d.tsE‘F°@ohos.deviceInfo¯effectkitsampleÃªoh-resolveÂDAÂÙ>D:\f\effect-kit-master\entry\src\main\ets\utils\WindowUtil.etsAÃªoh-resolveÂDAÂÙCD:\f\effect-kit-master\entry\src\main\ets\utils\ColorPickerUtil.etsAÃªoh-resolveÂDAÂÙ:D:\f\effect-kit-master\entry\src\main\ets\utils\Logger.etsAÃªoh-resolveÂDAÂÙFD:\f\effect-kit-master\entry\src\main\ets\constants\CommonContants.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings¨Index.js ‘©Index.etsÜ°‘”    ‘” ‘”   ‘” –”   ” 	” ” ”! #”" $–”   ” 	” ” ”* %”+ &–”   ” ” ” ”9 9”: :–”  " ” "” "” "”$ "$”% "%˜”  # ” #”	 #	” #” #$” #*”3 #?”4 #Ì@–”  $ ” $	” $” $”) $2”* $3š”  % ” %”	 &” &” '”. '”0 *”6 *”ÌP *!”ÌQ *"–”  , ” ,”	 ,	” ,” ,” ,’”  . ” .“”  / ” /” 3“”  / ” /” /“” 0”= 0	”> 0	“” 1”= 1	”> 1	“” 2”9 2”: 2—”  3 ” 3” /” /” /”$ /”, 3’” =” =‘” ; ‘”6 ? ›” Ì@” Ì@” Ì@”Ì Ì@&”Ì Ì@(”Ì˜ Ì@1”Ìš Ì@3”Ì¨ Ì@ÌA”Ì© Ì@ÌB”Ì° Ì@ÌI”Ì² Ì@ÌK›” ÌA” ÌA” ÌA”Ì ÌA&”Ì ÌA(”Ì˜ ÌA1”Ìš ÌA3”Ì¨ ÌAÌA”Ì© ÌAÌB”Ì° ÌAÌI”Ì² ÌAÌK›” ÌB” ÌB” ÌB”Ì ÌB&”Ì ÌB(”Ì˜ ÌB1”Ìš ÌB3”Ì¨ ÌBÌA”Ì© ÌBÌB”Ì° ÌBÌI”Ì² ÌBÌK›” ÌC” ÌC” ÌC”Ì ÌC&”Ì ÌC(”Ì˜ ÌC1”Ìš ÌC3”Ì¨ ÌCÌA”Ì© ÌCÌB”Ì° ÌCÌI”Ì² ÌCÌK›” ÌD” ÌD” ÌD”Ì ÌD&”Ì ÌD(”Ì˜ ÌD1”Ìš ÌD3”Ì¨ ÌDÌA”Ì© ÌDÌB”Ì° ÌDÌI”Ì² ÌDÌK›” ÌE” ÌE” ÌE”Ì ÌE&”Ì ÌE(”Ì˜ ÌE1”Ìš ÌE3”Ì¨ ÌEÌA”Ì© ÌEÌB”Ì° ÌEÌI”Ì² ÌEÌK›” ÌF” ÌF” ÌF”Ì ÌF&”Ì ÌF(”Ì˜ ÌF1”Ìš ÌF3”Ì¨ ÌFÌA”Ì© ÌFÌB”Ì° ÌFÌI”Ì² ÌFÌK›” ÌG” ÌG” ÌG”Ì ÌG&”Ì ÌG(”Ì˜ ÌG1”Ìš ÌG3”Ì¨ ÌGÌA”Ì© ÌGÌB”Ì° ÌGÌI”Ì² ÌGÌK‘”	 ÌH””= ÌK"”ÌL ÌK1”ÌM ÌK2”Ìd ÌKÌI””< ÌM!”ÌK ÌM0”ÌL ÌM1”Ìc ÌMÌH’”; ÌO ”< ÌO!’”< ÌQ!”= ÌQ"’”? ÌR$”Ì@ ÌR%’”; ÌT!”Ì@ ÌT&’”9 ÌV”> ÌV$’”ÌA ÌX&”ÌL ÌX1’”! ÌZ'”& ÌZ,””  Ì]/”$ Ì]3”4 Ì]ÌC”6 Ì]ÌE”” Ì_#”- Ì_2”. Ì_3”= Ì_ÌB”” Ì`#”- Ì`2”. Ì`3”= Ì`ÌB”” Ìa$”. Ìa3”/ Ìa4”Ì@ ÌaÌE˜” Ìc” Ìc” Ìc”( Ìc%”* Ìc'”+ Ìc(”9 Ìc6”; ÌcÌS˜”? Ìe”ÌN Ìe”ÌO Ìe”ÌY Ìe)”Ì\ Ìe,”Ìt ÌeÌD”Ìv ÌeÌg”Ìz ÌeÌk˜”3 Ìf”ÌB Ìf”ÌC Ìf”ÌM Ìf)”ÌP Ìf,”Ì\ Ìf8”Ì^ ÌfÌ_”Ìg ÌfÌh””< Ìi/”ÌP ÌiÌC”ÌQ ÌiÌD”ÌV ÌiÌI‘” 9’” ?	” ?’” ?	” ?’” ÌK	” ÌK’” ÌK	” ÌK’” ÌM	” ÌM’” ÌM	” ÌM’” ÌO	” ÌO’” ÌO	” ÌO’” ÌQ	” ÌQ’” ÌQ	” ÌQ’” ÌR	” ÌR’” ÌR	” ÌR’” ÌT	” ÌT’” ÌT	” ÌT’” ÌV	” ÌV’” ÌV	” ÌV’” ÌX	” ÌX’” ÌX	” ÌX’” ÌeÌF” ÌeÌ\’” ÌeÌF” ÌeÌ\’” Ìf:” ÌfÌD’” Ìf:” ÌfÌD’” Ìi	” Ìi’” Ìi	” Ìi”” Ìk”	 Ìk”
+ Ìk” Ìkš” Ìl” Ìl
+” Ìl” Ìl” Ìl” Ìl” Ìl”. Ìl*”/ Ìl+”0 Ìl,’” Ìn” Ìn›” Ìo” Ìo” Ìo	” Ìo” Ìo”& Ìo"”' Ìo#”1 Ìo-”6 Ìo2”< Ìo8”= Ìo9’” Ìq” Ìq–” Ìr” Ìr” Ìr	” Ìr” Ìr” Ìr’” Ìt” Ìtœ” Ìu” Ìu” Ìu	” Ìu” Ìu”) Ìu%”* Ìu&”7 Ìu3”8 Ìu4”ÌA Ìu=”ÌB Ìu>”ÌC Ìu?˜” Ìv” Ìv” Ìv	” Ìv” Ìv”2 Ìv.”4 Ìv0”5 Ìv1’” Ìx” Ìx—” Ìy” Ìy
+” Ìy” Ìy”! Ìy”# Ìy”$ Ìy ’” Ì{” Ì{™” Ì|” Ì|
+” Ì|” Ì|”! Ì|”" Ì|”# Ì|”$ Ì| ”% Ì|!’” Ì}” Ì}’” Ì” Ìš” Ì€” Ì€
+” Ì€” Ì€” Ì€” Ì€” Ì€”+ Ì€'”, Ì€(”- Ì€)œ” Ì” Ì” Ì	” Ì” Ì”) Ì%”* Ì&”7 Ì3”8 Ì4”> Ì:”? Ì;”Ì@ Ì<˜” Ì‚” Ì‚” Ì‚	” Ì‚” Ì‚”  Ì‚”" Ì‚”# Ì‚œ” Ìƒ” Ìƒ” Ìƒ” Ìƒ” Ìƒ”) Ìƒ%”* Ìƒ&”4 Ìƒ0”7 Ìƒ3”ÌO ÌƒÌK”ÌP ÌƒÌL”ÌQ ÌƒÌMœ” Ì„” Ì„” Ì„” Ì„” Ì„”) Ì„%”* Ì„&”4 Ì„0”7 Ì„3”ÌC Ì„?”ÌD Ì„Ì@”ÌE Ì„ÌA’” Ì…” Ì…‘” Ì‡‘” Ì‰’” ÌŠ
+” ÌŠ’” Ì‹” Ì‹” ÌŒ” ÌŒ” ÌŒ” ÌŒ” ÌŒ”  ÌŒ”' ÌŒ!”( ÌŒ"”7 ÌŒ1”8 ÌŒ2”ÌL ÌŒÌF”ÌN ÌŒÌH”ÌO ÌŒÌI’” Ì” Ì” Ì” Ì
+” Ì” Ì” Ì”$ Ì”% Ì”. Ì(”3 Ì-”4 Ì.”5 Ì/”6 Ì0”Ì` ÌÌZ” Ì” Ì” Ì” Ì” Ì” Ì” Ì”, Ì&”0 Ì*”1 Ì+”; Ì5”= Ì7”> Ì8”? Ì9‘”	 Ì”” Ì” Ì” Ì” ÌÜ ” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘”6 Ì‘0”: Ì‘4”; Ì‘5”ÌD Ì‘>”ÌE Ì‘?”ÌJ Ì‘ÌD”ÌK Ì‘ÌE”ÌM Ì‘ÌG”ÌN Ì‘ÌH”ÌO Ì‘ÌI‘”	 Ì’’” Ì“” Ì“‘” Ì•‘” Ì—”” Ì˜
+”	 Ì˜”
+ Ì˜” Ì˜’” Ì™” Ì™” Ìš” Ìš
+” Ìš” Ìš(”% Ìš.”+ Ìš4”, Ìš5”9 ÌšÌB”: ÌšÌC”> ÌšÌG”? ÌšÌH”ÌF ÌšÌO”ÌG ÌšÌP”ÌH ÌšÌQ™” Ì›” Ì›” Ì›” Ì›”8 Ì›2”9 Ì›3”= Ì›7”> Ì›8”? Ì›9Ü ” Ìœ” Ìœ
+” Ìœ” Ìœ”! Ìœ”% Ìœ”& Ìœ ”2 Ìœ,”4 Ìœ.”5 Ìœ/”: Ìœ4”; Ì”ÌG Ì”ÌH Ì”ÌZ Ì'”Ì[ Ì(”Ìa Ì.”Ìb Ì/”Ìo Ì<”Ìp Ì=”Ì{ ÌÌH”Ì| ÌÌI”Ì} ÌÌJ”Ì„ ÌÌQ”Ì… ÌÌR”Ì‹ ÌÌX”ÌŒ Ì”Ì ÌÜ ” ÌŸ” ÌŸ
+” ÌŸ”! ÌŸ”$ ÌŸ”( ÌŸ"”) ÌŸ#”5 ÌŸ/”7 ÌŸ1”8 ÌŸ2”= ÌŸ7”> Ì ”ÌJ Ì ”ÌK Ì ”Ì] Ì '”Ì^ Ì (”Ìd Ì .”Ìe Ì /”Ìr Ì <”Ìs Ì =”ÌŒ Ì ÌV”Ì Ì ÌW”Ì Ì ÌX”Ì˜ Ì Ìb”Ì™ Ì Ìc”ÌŸ Ì Ìi”Ì  Ì¡”Ì¡ Ì¡‘”	 Ì¢”” Ì¢” Ì¢” Ì¢” Ì¢Ü ” Ì£” Ì£” Ì£” Ì£” Ì£” Ì£” Ì£”8 Ì£2”< Ì£6”= Ì£7”ÌF Ì£Ì@”ÌG Ì£ÌA”ÌL Ì£ÌF”ÌM Ì£ÌG”ÌO Ì£ÌI”ÌP Ì£ÌJ”ÌQ Ì£ÌK‘”	 Ì¤’” Ì¥” Ì¥‘” Ì§‘” Ìª–” Ì«
+”	 Ì«”
+ Ì«” Ì«” Ì«” Ì«,Ü ” Ì¬” Ì¬” Ì¬” Ì¬”" Ì¬”& Ì¬"”+ Ì¬'”. Ì¬*”/ Ì¬+”3 Ì¬/”8 Ì¬4”< Ì¬8”Ì@ Ì¬<”ÌA Ì¬=”ÌH Ì¬ÌD”ÌI Ì¬ÌE”ÌO Ì¬ÌK”ÌQ Ì¬ÌM’” Ì­” Ì­‘”	 Ì®—” Ì°” Ì°” Ì°	” Ì°”! Ì°”% Ì°!”& Ì°"’” Ì²” Ì²’” Ì³” Ì³Ü ” Ì´” Ì´” Ì´” Ì´”# Ì´”' Ì´!”( Ì´"”? Ì´9”Ì@ Ì´:”ÌD Ì´>”ÌE Ì´?”ÌL Ì´ÌF”ÌM Ì´ÌG”ÌR Ì´ÌL”ÌS Ì´ÌM”ÌT Ì´ÌN”Ì\ Ì´ÌV”Ì] Ì´ÌW”Ì^ Ì´ÌX•” Ìµ” Ìµ
+” Ìµ” Ìµ” Ìµš” Ì¶” Ì¶” Ì¶” Ì¶” Ì¶”  Ì¶”" Ì¶”: Ì¶2”; Ì¶3”< Ì¶4—” Ì·” Ì·” Ì·”& Ì·”) Ì·!”. Ì·&”/ Ì·'’” Ì¸” Ì¸‘” Ì¹’” Ì»”$ Ì»Ü ” Ì¼” Ì¼” Ì¼” Ì¼)”! Ì¼/”0 Ì¼>”1 Ì¼?”ÌI Ì¼ÌW”ÌJ Ì½”ÌR Ì½”ÌT Ì¾”ÌX Ì¾”ÌY Ì¾”Ìf Ì¾”Ìg Ì¿”Ìh Ì¿’” ÌÁ” ÌÁÜ ” ÌÂ” ÌÂ
+” ÌÂ” ÌÂ”, ÌÂ&”- ÌÂ'”Ì@ ÌÂ:”ÌA ÌÂ;”ÌG ÌÂÌA”ÌH ÌÂÌB”ÌM ÌÂÌG”ÌO ÌÂÌI”ÌS ÌÂÌM”ÌT ÌÂÌN”Ì^ ÌÂÌX”Ì_ ÌÂÌY”Ì` ÌÂÌZ›” ÌÃ” ÌÃ
+” ÌÃ” ÌÃ”* ÌÃ$”+ ÌÃ%”5 ÌÃ/”6 ÌÃ0”Ì@ ÌÃ:”ÌA ÌÃ;”ÌB ÌÃ<’” ÌÅ” ÌÅœ” ÌÆ” ÌÆ
+” ÌÆ”# ÌÆ”& ÌÆ ”5 ÌÆ/”6 ÌÆ0”ÌF ÌÆÌ@”ÌG ÌÆÌA”ÌQ ÌÆÌK”ÌR ÌÆÌL”ÌS ÌÆÌM’” ÌÈ” ÌÈ˜” ÌÉ” ÌÉ
+” ÌÉ”% ÌÉ”& ÌÉ ”. ÌÉ(”/ ÌÉ)”0 ÌÉ*’” ÌË” ÌË–” ÌÌ” ÌÌ” ÌÌ” ÌÌ” ÌÌ” ÌÌ’” ÌÎ” ÌÎ” ÌÏ” ÌÏ
+” ÌÏ” ÌÏ” ÌÏ” ÌÏ” ÌÏ”  ÌÏ”) ÌÏ#”, ÌÏ&”: ÌÏ4”; ÌÏ5”ÌB ÌÏ<”ÌC ÌÏ=Ü ” ÌÑ” ÌÑ” ÌÑ” ÌÑ” ÌÑ” ÌÑ” ÌÑ”1 ÌÑ+”9 ÌÑ3”ÌJ ÌÑÌD”ÌP ÌÑÌJ”ÌQ ÌÑÌK”Ì[ ÌÑÌU”Ì] ÌÑÌW”Ì^ ÌÑÌX”Ì_ ÌÑÌY‘”	 ÌÓ”” ÌÓ” ÌÓ” ÌÓ” ÌÓÜ ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ”8 ÌÔ2”< ÌÔ6”= ÌÔ7”ÌF ÌÔÌ@”ÌG ÌÔÌA”ÌL ÌÔÌF”ÌM ÌÔÌG”ÌO ÌÔÌI”ÌP ÌÔÌJ”ÌQ ÌÔÌK” ÌÕ” ÌÕ
+” ÌÕ” ÌÕ” ÌÕ” ÌÕ” ÌÕ”  ÌÕ”) ÌÕ#”, ÌÕ&”: ÌÕ4”; ÌÕ5”Ì@ ÌÕ:”ÌA ÌÕ;‘”	 ÌÖ‘” ÌÖ—” Ì×” Ì×
+” Ì×”" Ì×”% Ì×”* Ì×$”+ Ì×%‘”	 ÌØ’” ÌÙ” ÌÙ‘” ÌÛ‘” Ìİ–” ÌŞ
+”	 ÌŞ”
+ ÌŞ”! ÌŞ'”" ÌŞ(”* ÌŞ:’” Ìß” Ìßš” Ìà” Ìà” Ìà”  Ìà;”$ Ìà?”% ÌàÌ@”, ÌàÌG”- ÌàÌH”< ÌàÌW”= ÌàÌX” Ìá” Ìá” Ìá” Ìá#”# Ìá)”. Ìá4”/ Ìá5”> ÌáÌD”? ÌáÌE”ÌG ÌáÌM”ÌH ÌáÌN”ÌJ ÌáÌP”ÌK ÌáÌQ”ÌL ÌáÌR˜” Ìâ” Ìâ” Ìâ” Ìâ”# Ìâ”$ Ìâ”* Ìâ3”+ Ìâ4›” Ìã” Ìã” Ìã”  Ìã-”% Ìã2”& Ìã3”7 ÌãÌD”8 ÌãÌE”> ÌãÌK”? ÌãÌL”Ì@ ÌãÌMš” Ìä” Ìä” Ìä” Ìä'”# Ìä-”. Ìä8”/ Ìä9”= ÌäÌG”? ÌäÌI”Ì@ ÌäÌJ–” Ìå” Ìå” Ìå” Ìå”! Ìå”" Ìå”” Ìæ” Ìæ” Ìæ” Ìæ‘”	 Ìç”” Ìç” Ìç” Ìç” ÌçÜ ” Ìè” Ìè” Ìè” Ìè” Ìè” Ìè” Ìè”ÌA Ìè;”ÌE Ìè?”ÌF ÌèÌ@”ÌO ÌèÌI”ÌP ÌèÌJ”ÌU ÌèÌO”ÌV ÌèÌP”ÌX ÌèÌR”ÌY ÌèÌS”ÌZ ÌèÌT”” Ìé” Ìé” Ìé” Ìé‘”	 Ìê’” Ìë” Ìë‘” Ìí‘” Ìï”” Ìğ
+” Ìğ” Ìğ”! Ìğ/—” Ìñ” Ìñ” Ìñ	” Ìñ” Ìñ”% Ìñ!”& Ìñ"˜” Ìó” Ìó” Ìó	” Ìó” Ìó” Ìó”% Ìó!”& Ìó"–” Ìô” Ìô” Ìô”% Ìô”& Ìô ”? Ìô9–” Ìõ” Ìõ” Ìõ”" Ìõ”# Ìõ”9 Ìõ3•” Ìö” Ìö” Ìö” Ìö” Ìö™” Ì÷” Ì÷” Ì÷”# Ì÷”& Ì÷”* Ì÷"”+ Ì÷#”8 Ì÷0”9 Ì÷1’” Ìø” Ìø””	 Ìù” Ìù” Ìù
+” Ìù—” Ìú” Ìú
+” Ìú” Ìú”" Ìú”* Ìú$”+ Ìú%”” Ìû”	 Ìû”
+ Ìû” Ìû’” Ìü” Ìü‘” Ìş‘” Í ’” Í
+” Í˜” Í” Í” Í	” Í” Í”* Í&”, Í(”- Í)’” Í” Í‘” Í‘” Í’” Í
+” Í˜” Í	” Í	” Í		” Í	” Í	”& Í	"”( Í	$”) Í	%’” Í
+” Í
+‘” Í‘” Í’” Í
+” Í”” Í” Í
+” Í” Í”” Í”  Í”! Í”& Í ”” Í”  Í”! Í”+ Í%”” Í”  Í”! Í”3 Í-”” Í”  Í”! Í”3 Í-”” Í”  Í”! Í”/ Í)’”	 Í”
+ Í” Í” Í
+” Í” Í”' Í#”( Í$”/ Í+”0 Í,”4 Í0”5 Í1”ÌB Í>”ÌC Í?”ÌD ÍÌ@Ü ” Í” Í” Í	” Í” Í”' Í#”( Í$”) Í%”5 Í1”8 Í4”9 Í5”: Í6”= Í9”ÌG ÍÌC”ÌH ÍÌD”ÌN ÍÌJ”ÌO ÍÌK”ÌP ÍÌL’” Í” Íš” Í” Í” Í	” Í” Í”  Í”! Í”- Í)”. Í*”/ Í+’” Í” Í‘” Í’” Í” Í
+˜” Í” Í
+” Íx” Íx
+” Íx”( Íx”) Íx”4 Íx&˜” Í” Í
+” Íy” Íy” Íy”) Íy”* Íy”5 Íy'•” Í” Í
+” Íz”! Íz”" Íz–” Í{” Í{” Í{”, Í{"”- Í{#”3 Í{)“” Í|” Í|” Í|š” Í}” Í}	” Í}” Í}”( Í}”* Í}”9 Í}-”: Í}.”ÌN Í}ÌB”ÌO Í}ÌCÜ ” Í~” Í~	” Í~” Í~”$ Í~”% Í~”& Í~”' Í~”2 Í~&”3 Í~'”4 Í~(”5 Í~)”: Í~.”; Í~/”Ì@ Í~4”ÌB Í~6”ÌQ Í~ÌE”ÌR Í~ÌF”Ìd Í~ÌX”Ìe Í~ÌY‘” Í‘” Í€’” Í ” Í ’” Í!” Í!	’” Í ” Í –” Í!” Í!	” Í"	” Í"” Í"” Í"’” Í ” Í ˜” Í!” Í!	” Í#	” Í#” Í#” Í#” Í#”) Í#"’” Í ” Í ˜” Í!” Í!	” Í$	” Í$”  Í$”$ Í$”% Í$”3 Í$,’” Í ” Í ’” Í!” Í!	’” Í&” Í&š” Í'” Í'” Í'” Í'”' Í'”) Í'”2 Í'%”3 Í'&”9 Í',”; Í'.’” Í&” Í&–” Í'” Í'” Í[” Í[” Í[”  Í[–” Í(” Í(” Í(” Í(” Í(”/ Í($˜” Í(” Í(” Í-	” Í-” Í-”( Í-”) Í-”4 Í-*Ü ” Í(” Í(” Í.	” Í.” Í.” Í.” Í.”5 Í.+”: Í.0”> Í.4”ÌB Í.8”ÌF Í.<”ÌG Í.=”Ì] Í.ÌS”Ìb Í.ÌX”Ìf Í.Ì\˜” Í/
+” Í/” Í/”% Í/”& Í/ ”' Í/!”( Í/"”. Í/(œ” Í(” Í(” Í0	” Í0” Í0” Í0”! Í0”Ì˜ Í0>”Ìš Í0Ì@”ÌŸ Í0ÌE”Í Í0Ìm”Í Í0Ìo–” Í(” Í(” Í1	” Í1” Í1”  Í1˜” Í(” Í(” Í2	” Í2” Í2”  Í2”! Í2”/ Í2%˜” Í(” Í(” Í3	” Í3” Í3”  Í3”! Í3”/ Í3%–” Í(” Í(” Í4	” Í4” Í4” Í4˜” Í(” Í(” Í5	” Í5” Í5”! Í5”" Í5”1 Í5'–” Í(” Í(” Í6	” Í6” Í6”" Í6™” Í(” Í(” Í7	” Í7” Í7” Í7”" Í7 ”$ Í7"”& Í7$—” Í8
+” Í8” Í8”! Í8”$ Í8”) Í8#”* Í8$˜” Í9
+” Í9” Í9”# Í9”$ Í9”) Í9#”* Í9$”+ Í9%’” Í:” Í:	’” Í)
+” Í)’”3 Í)2”8 Í)?™” Í*” Í*” Í*”% Í*!”1 Í*"”5 Í*&”7 Í*(”< Í*-”= Í*.Ü ”/ Í)”3 Í)”4 Í)”; Í)”ÌU Í+”ÌV Í+”ÌZ Í+”Ì\ Í+”Ìa Í+,”Ìc Í+.”Ìe Í+0”Ìf Í+1”Ìk Í+6”Ìl Í+7”Ìt Í+?”Ìv Í+ÌA’” Í)
+” Í)’” Í(” Í(’” Í<” Í<’” Í=” Í=’” Í<” Í<–” Í=” Í=” ÍX	” ÍX” ÍX” ÍX’” Í<” Í<” Í=” Í=” ÍY	” ÍY” ÍY” ÍY” ÍY”  ÍY”" ÍY”$ ÍY”) ÍY"”+ ÍY$”- ÍY&”/ ÍY(’” Í>
+” Í>š” Í?
+” Í?”# Í?”% Í?”) Í?”+ Í?”5 Í?#”6 Í?$”< Í?*”> Í?,’” Í>
+” Í>–” Í?
+” Í?” ÍE” ÍE” ÍE” ÍE’” Í>
+” Í>–” Í?
+” Í?” ÍF” ÍF” ÍF” ÍF’” Í>
+” Í>–” Í?
+” Í?” ÍG”" ÍG”# ÍG”. ÍG&’” Í>
+” Í>œ” Í?
+” Í?” ÍH” ÍH” ÍH” ÍH”  ÍH”! ÍH”% ÍH”& ÍH”7 ÍH/”9 ÍH1”” Í@” Í@” Í@” Í@˜” Í@” Í@” ÍA” ÍA” ÍA”  ÍA”! ÍA”& ÍA$–” Í@” Í@” ÍB” ÍB” ÍB” ÍB˜” Í@” Í@” ÍC” ÍC” ÍC”& ÍC$”' ÍC%”+ ÍC)’” Í@” Í@’” Í>
+” Í>’” Í?
+” Í?’” ÍJ
+” ÍJ–” ÍJ
+” ÍJ” ÍJ” ÍJ” ÍJ”  ÍJ ’” ÍJ
+” ÍJ’” ÍL
+” ÍLš” ÍM
+” ÍM”# ÍM”% ÍM”) ÍM”+ ÍM”5 ÍM#”6 ÍM$”< ÍM*”> ÍM,’” ÍL
+” ÍL–” ÍM
+” ÍM” ÍS” ÍS” ÍS” ÍS’” ÍL
+” ÍL–” ÍM
+” ÍM” ÍT” ÍT” ÍT” ÍT’” ÍL
+” ÍL–” ÍM
+” ÍM” ÍU”" ÍU”# ÍU”. ÍU&’” ÍL
+” ÍLœ” ÍM
+” ÍM” ÍV” ÍV” ÍV” ÍV”  ÍV”! ÍV”% ÍV”& ÍV”3 ÍV+”5 ÍV-”” ÍN” ÍN” ÍN” ÍN˜” ÍN” ÍN” ÍO” ÍO” ÍO”  ÍO”! ÍO”& ÍO$–” ÍN” ÍN” ÍP” ÍP” ÍP” ÍP˜” ÍN” ÍN” ÍQ” ÍQ” ÍQ”& ÍQ$”' ÍQ%”+ ÍQ)’” ÍN” ÍN’” ÍL
+” ÍL’” ÍM
+” ÍM’” Í<” Í<’” Í=” Í=’” Í&” Í&’” Í'” Í'’” Í]” Í]’” Í^” Í^	’” Í]” Í]–” Í^” Í^	” Ím” Ím” Ím” Ím’” Í]” Í]–” Í^” Í^	” Ín” Ín” Ín” Ín’” Í]” Í]” Í^” Í^	” Ío” Ío” Ío” Ío” Ío”  Ío”" Ío”$ Ío”) Ío ”+ Ío"”- Ío$”/ Ío&’” Í]” Í]˜” Í^” Í^	” Íp” Íp”  Íp”$ Íp”% Íp”3 Íp*’” Í_” Í_Ü ” Í`” Í`” Í`” Í`” Í`”  Í`”, Í`!”/ Í`$”0 Í`%”6 Í`+”: Í`/”; Í`0”ÌB Í`7”ÌC Í`8”ÌI Í`>”ÌK Í`Ì@’” Í_” Í_˜” Í`” Í`” Ía” Ía” Ía”  Ía”! Ía”& Ía ’” Í_” Í_–” Í`” Í`” Íb” Íb” Íb” Íb’” Í_” Í_’” Í`” Í`’” Íd” Íd–” Íd” Íd” Íd” Íd” Íd”  Íd’” Íd” Íd’” Íf” Íf—” Íg” Íg”# Íg”' Íg”( Íg”7 Íg#”9 Íg%’” Íf” Íf–” Íg” Íg” Íh” Íh” Íh” Íh’” Íf” Íf–” Íg” Íg” Íi” Íi” Íi” Íi’” Íf” Íf–” Íg” Íg” Íj”" Íj”# Íj”. Íj&’” Íf” Ífœ” Íg” Íg” Ík” Ík” Ík” Ík”  Ík”! Ík”% Ík”& Ík”8 Ík0”: Ík2’” Íf” Íf’” Íg” Íg’” Í]” Í]’” Í^” Í^	’” Ír” Ír’” Ís” Ís	’” Ír” Ír–” Ís” Ís	” Ít	” Ít” Ít” Ít’” Ír” Ír˜” Ís” Ís	” Íu	” Íu” Íu” Íu” Íu”, Íu%’” Ír” Ír˜” Ís” Ís	” Ív	” Ív”  Ív”$ Ív”% Ív”3 Ív,’” Ír” Ír’” Ís” Ís	’” Í” Í
+‘” Í‘” Íƒ‘” Í…–” Í‡” Í‡” Í‡” Í‡"” Í‡$”  Í‡1’” Íˆ” Íˆ	–” Íˆ” Íˆ	” Í½” Í½
+” Í½” Í½–” Íˆ” Íˆ	” Í¾” Í¾” Í¾” Í¾•” Íˆ” Íˆ	” Í¿” Í¿” Í¿›” ÍÀ” ÍÀ	” ÍÀ” ÍÀ” ÍÀ”& ÍÀ”' ÍÀ”( ÍÀ”ÌŸ ÍÀÌF”Ì  ÍÀÌG”Í ÍÀÌj‘” ÍÁš” Í‰” Í‰
+” Í‰” Í‰” Í‰”# Í‰”1 Í‰+”2 Í‰,”9 Í‰3”; Í‰5’” ÍŠ”  ÍŠ’” Í‹” Í‹’” ÍŠ”  ÍŠ–” Í‹” Í‹” Í•	”$ Í•”% Í•”+ Í•’” ÍŠ”  ÍŠ–” Í‹” Í‹” Í–	”% Í–”& Í–”, Í–’” ÍŠ”  ÍŠ˜” Í‹” Í‹” Í—	”- Í—”. Í—”7 Í—!”8 Í—"”> Í—(’” ÍŠ”  ÍŠ˜” Í‹” Í‹” Í˜	”. Í˜”/ Í˜”> Í˜(”? Í˜)”ÌO Í˜9’” ÍŠ”  ÍŠ”” Í‹” Í‹” Í™	”+ Í™’” ÍŒ
+”' ÍŒ–” ÍŒ
+”' ÍŒ”( Í”- Í”. Í”0 Í–” ÍŒ
+”' ÍŒ”( Í”. Í”/ Í”1 Í˜” ÍŒ
+”' ÍŒ”( Í”- Í”. Í”3 Í”4 Í”9 Í”” Í
+” Í”$ Í”, Í˜” Í
+” Í” Í‘”& Í‘”' Í‘”, Í‘”- Í‘”2 Í‘"–” Í
+” Í” Í’”% Í’”& Í’”( Í’š” Í
+” Í” Í“”# Í“”$ Í“”& Í“”) Í“”+ Í“”- Í“”/ Í“’” Í
+” Í’” ÍŠ” ÍŠ’” Í‹” Í‹‘” Íšš” Íš” Íš” Íš” Íš”# Íš”( Íš$”6 Íš2”7 Íš3”< Íš8”> Íš:’” Í›”! Í›’” Íœ” Íœ’” Í›”! Í›–” Íœ” Íœ” Í§	”$ Í§”% Í§”+ Í§’” Í›”! Í›–” Íœ” Íœ” Í¨	”% Í¨”& Í¨”, Í¨’” Í›”! Í›˜” Íœ” Íœ” Í©	”- Í©”. Í©”7 Í©!”8 Í©"”> Í©(’” Í›”! Í›˜” Íœ” Íœ” Íª	”. Íª”/ Íª”> Íª(”? Íª)”ÌM Íª7’” Í›”! Í›”” Íœ” Íœ” Í«	”+ Í«”” Í
+” Í”$ Í”* Í˜” Í
+” Í” Í”& Í”' Í”, Í”- Í”0 Í –” Í
+” Í” ÍŸ”% ÍŸ”& ÍŸ”( ÍŸ’” Í
+” Í”” Í 
+” Í ”/ Í ”3 Í š” Í 
+” Í ” Í¡”% Í¡”& Í¡”( Í¡”+ Í¡”- Í¡”/ Í¡”1 Í¡—” Í 
+” Í ” Í¢”& Í¢”' Í¢”* Í¢”, Í¢™” Í£”  Í£”! Í£”* Í£”- Í£”; Í£-”< Í£.”ÌC Í£5”ÌD Í£6˜” Í¤”  Í¤”! Í¤”/ Í¤!”0 Í¤"”5 Í¤'”6 Í¤(”7 Í¤)’” Í¥” Í¥’” Í 
+” Í ’” Í›” Í›’” Íœ” Íœ‘” Í¬‘” Í¬’” Í­” Í­–” Í®” Í®”% Í®”) Í®”* Í®”2 Í®’” Í­” Í­–” Í®” Í®” Í¯”# Í¯”$ Í¯”* Í¯’” Í­” Í­–” Í®” Í®” Í°”$ Í°”% Í°”+ Í°’” Í­” Í­˜” Í®” Í®” Í±”' Í±”( Í±”0 Í±”1 Í±”8 Í±%’” Í­” Í­”” Í®” Í®” Í²”* Í²’” Í­” Í­—” Í®” Í®” Í³”( Í³”) Í³”, Í³”. Í³š” Í´”  Í´”$ Í´”% Í´”. Í´”3 Í´#”ÌA Í´1”ÌB Í´2”ÌI Í´9”ÌK Í´;™”  Íµ”$ Íµ”% Íµ”. Íµ”1 Íµ”? Íµ-”Ì@ Íµ.”ÌG Íµ5”ÌH Íµ6‘” Í¶’” Í·
+” Í·’” Í­” Í­—” Í®” Í®” Í¸”% Í¸”& Í¸”) Í¸”+ Í¸™” Í¹”  Í¹”! Í¹”* Í¹”- Í¹”; Í¹+”< Í¹,”ÌA Í¹1”ÌB Í¹2’” Íº
+” Íº‘” Í»’” Íˆ” Íˆ	‘” ÍÂ‘” ÍÄ‘” ÍÆ’” ÍÇ
+” ÍÇ–” ÍÈ” ÍÈ” ÍÈ” ÍÈ”" ÍÈ”$ ÍÈ •” ÍÉ” ÍÉ”% ÍÉ”& ÍÉ ”+ ÍÉ%”” ÍÊ” ÍÊ” ÍÊ” ÍÊ•” ÍË” ÍË”% ÍË”& ÍË ”0 ÍË*”” ÍÌ” ÍÌ” ÍÌ” ÍÌ•” ÍÍ” ÍÍ”% ÍÍ”& ÍÍ ”8 ÍÍ2”” ÍÎ” ÍÎ” ÍÎ” ÍÎ•” ÍÏ” ÍÏ”% ÍÏ”& ÍÏ ”8 ÍÏ2”” ÍĞ” ÍĞ” ÍĞ” ÍĞ•” ÍÑ” ÍÑ”% ÍÑ”& ÍÑ ”4 ÍÑ.”” ÍÒ” ÍÒ” ÍÒ” ÍÒ‘” ÍÓ”” ÍÔ” ÍÔ” ÍÔ” ÍÔ‘”	 ÍÕ’” ÍÖ” ÍÖÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ¹‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍĞ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  Íİ ‘”  ÍŞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íğ ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íı ‘”  Íş ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache—ÔrK•¤type¥start£endªspecifiers¦source±ImportDeclarationÍŒÍ®‘ÔrL”¤type¥start£end¥local¶ImportDefaultSpecifierÍ“Í™ÔrM”¤type¥start£end¤nameªIdentifierÍ“Í™¦windowÔrN•¤type¥start£end¥value£raw§LiteralÍŸÍ­¬@ohos.window®"@ohos.window"K±ImportDeclarationÍ°ÍÛ‘L¶ImportDefaultSpecifierÍ·Í¼MªIdentifierÍ·Í¼¥imageN§LiteralÍÂÍÚ¶@ohos.multimedia.image¸"@ohos.multimedia.image"K±ImportDeclarationÍİÍ‘L¶ImportDefaultSpecifierÍäÍóMªIdentifierÍäÍó¯CommonConstantsN§LiteralÍùÍ»../constants/CommonContants½'../constants/CommonContants'K±ImportDeclarationÍÍ>‘L¶ImportDefaultSpecifierÍ Í&MªIdentifierÍ Í&¦LoggerN§LiteralÍ,Í=¯../utils/Logger±'../utils/Logger'K±ImportDeclarationÍ@Ít‘ÔrO•¤type¥start£end¨imported¥local¯ImportSpecifierÍIÍVMªIdentifierÍIÍV­ImmersiveTypeMªIdentifierÍIÍV­ImmersiveTypeN§LiteralÍ^Ís³../utils/WindowUtilµ'../utils/WindowUtil'K±ImportDeclarationÍvÍ ‘L¶ImportDefaultSpecifierÍ}Í‡MªIdentifierÍ}Í‡ªdeviceInfoN§LiteralÍÍŸ°@ohos.deviceInfo²"@ohos.deviceInfo"K±ImportDeclarationÍ¢Íó’O¯ImportSpecifierÍ«ÍºMªIdentifierÍ«Íº¯ColorPickerUtilMªIdentifierÍ«Íº¯ColorPickerUtilO¯ImportSpecifierÍ¼ÍĞMªIdentifierÍ¼ÍĞ´ColorExtractStrategyMªIdentifierÍ¼ÍĞ´ColorExtractStrategyN§LiteralÍØÍò¸../utils/ColorPickerUtilº'../utils/ColorPickerUtil'
