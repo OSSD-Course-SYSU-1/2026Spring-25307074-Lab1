@@ -1,0 +1,10 @@
+# 只屏蔽这些开发临时垃圾（绝对不上传）
+.hivigor/
+.idea/
+build/
+build-logs/
+entry/build/
+*.log
+*.cache
+
+# 其余所有东西：源码、截图、README、素材 全部正常保留上传

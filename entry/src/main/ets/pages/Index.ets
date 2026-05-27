@@ -41,6 +41,8 @@ import {
   ColorInfo,
   ColorExtractResult
 } from '../utils/ColorPickerUtil';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { fileIo } from '@kit.CoreFileKit';
 
 const TAG: string = '[Index]';
 
@@ -51,9 +53,17 @@ enum ImageLoadState {
   ERROR
 }
 
+/** 图片来源类型 */
+enum ImageSourceType {
+  RESOURCE,  // 应用内资源
+  URI        // 相册URI
+}
+
 /** 图片项接口 */
 interface ImageItem {
-  resource: Resource;
+  resource?: Resource;      // 应用内资源
+  uri?: string;             // 相册URI
+  sourceType: ImageSourceType;  // 来源类型
   loadState: ImageLoadState;
 }
 
@@ -62,14 +72,14 @@ interface ImageItem {
 struct Index {
   // 图片数据 - 初始状态为SUCCESS，图片会直接显示
   @State imgData: ImageItem[] = [
-    { resource: $r('app.media.image1'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image2'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image3'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image4'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image5'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image6'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image7'), loadState: ImageLoadState.SUCCESS },
-    { resource: $r('app.media.image8'), loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image1'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image2'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image3'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image4'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image5'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image6'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image7'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
+    { resource: $r('app.media.image8'), sourceType: ImageSourceType.RESOURCE, loadState: ImageLoadState.SUCCESS },
   ];
   
   // 当前背景色（用于渐变）
@@ -178,7 +188,15 @@ struct Index {
     
     try {
       // 获取图片PixelMap
-      const pixelMap = await this.getPixelMapFromResource(this.imgData[index].resource);
+      let pixelMap: image.PixelMap | null = null;
+      const item = this.imgData[index];
+      
+      if (item.sourceType === ImageSourceType.RESOURCE && item.resource) {
+        pixelMap = await this.getPixelMapFromResource(item.resource);
+      } else if (item.sourceType === ImageSourceType.URI && item.uri) {
+        pixelMap = await this.getPixelMapFromUri(item.uri);
+      }
+      
       if (!pixelMap) {
         Logger.error(TAG, 'Failed to get pixelMap');
         this.isProcessingColor = false;
@@ -233,6 +251,89 @@ struct Index {
       Logger.error(TAG, `getPixelMapFromResource failed: ${JSON.stringify(error)}`);
       return null;
     }
+  }
+
+  /**
+   * 从URI获取PixelMap（支持PhotoPicker返回的URI）
+   */
+  private async getPixelMapFromUri(uri: string): Promise<image.PixelMap | null> {
+    try {
+      Logger.info(TAG, `getPixelMapFromUri start, uri: ${uri}`);
+      
+      // 打开URI文件
+      const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
+      Logger.info(TAG, `File opened, fd: ${file.fd}`);
+      
+      // 创建ImageSource
+      const imageSource: image.ImageSource = image.createImageSource(file.fd);
+      Logger.info(TAG, `ImageSource created`);
+      
+      // 创建PixelMap
+      const pixelMap: image.PixelMap = await imageSource.createPixelMap();
+      Logger.info(TAG, `PixelMap created successfully`);
+      
+      // 释放资源
+      imageSource.release();
+      fileIo.closeSync(file);
+      
+      return pixelMap;
+    } catch (error) {
+      Logger.error(TAG, `getPixelMapFromUri failed: ${JSON.stringify(error)}`);
+      return null;
+    }
+  }
+
+  /**
+   * 从相册选择图片
+   */
+  private async selectPhotosFromGallery(): Promise<void> {
+    try {
+      const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
+      photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE;
+      photoSelectOptions.maxSelectNumber = 100;
+
+      const photoPicker = new photoAccessHelper.PhotoViewPicker();
+      const photoSelectResult: photoAccessHelper.PhotoSelectResult = await photoPicker.select(photoSelectOptions);
+
+      if (photoSelectResult.photoUris && photoSelectResult.photoUris.length > 0) {
+        Logger.info(TAG, `Selected ${photoSelectResult.photoUris.length} photos, first URI: ${photoSelectResult.photoUris[0]}`);
+        
+        // 直接使用PhotoPicker返回的URI，无需复制
+        const newImages: ImageItem[] = [];
+        for (let i = 0; i < photoSelectResult.photoUris.length; i++) {
+          const imageItem: ImageItem = {
+            uri: photoSelectResult.photoUris[i],
+            sourceType: ImageSourceType.URI,
+            loadState: ImageLoadState.SUCCESS  // 直接设置为SUCCESS，让Image组件立即显示
+          };
+          newImages.push(imageItem);
+        }
+
+        // 追加到现有列表
+        this.imgData = [...this.imgData, ...newImages];
+
+        // 加载第一张新图片的颜色
+        if (newImages.length > 0) {
+          const startIndex = this.imgData.length - newImages.length;
+          // 延迟执行颜色提取，确保图片已加载
+          setTimeout(() => {
+            this.loadImageColor(startIndex);
+          }, 500);
+        }
+
+        Logger.info(TAG, `Added ${newImages.length} photos to playlist`);
+      }
+    } catch (error) {
+      Logger.error(TAG, `selectPhotosFromGallery failed: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * 清空图片列表
+   */
+  private clearImageList(): void {
+    this.imgData = [];
+    this.currentIndex = 0;
   }
 
   /**
@@ -356,11 +457,27 @@ struct Index {
 
         Blank().layoutWeight(1)
 
+        // 导入图片按钮
+        Button('导入图片')
+          .fontSize(12)
+          .height(32)
+          .backgroundColor('#66000000')
+          .onClick(() => this.selectPhotosFromGallery())
+
+        // 清空按钮
+        Button('清空')
+          .fontSize(12)
+          .height(32)
+          .backgroundColor('#66000000')
+          .margin({ left: 8 })
+          .onClick(() => this.clearImageList())
+
         // 取色策略切换按钮
         Button(this.getStrategyName())
           .fontSize(12)
           .height(32)
           .backgroundColor('#66000000')
+          .margin({ left: 8 })
           .onClick(() => this.cycleColorStrategy())
       }
       .width('100%')
@@ -427,20 +544,35 @@ struct Index {
         .backgroundColor(CommonConstants.ERROR_BG_COLOR)
         .borderRadius($r('app.integer.image_borderRadius'))
       } else {
-        // 加载成功
-        Image(item.resource)
-          .width('100%')
-          .height('100%')
-          .objectFit(ImageFit.Contain)
-          .borderRadius($r('app.integer.image_borderRadius'))
-          .onComplete(() => {
-            if (item.loadState === ImageLoadState.LOADING) {
-              item.loadState = ImageLoadState.SUCCESS;
-            }
-          })
-          .onError(() => {
-            item.loadState = ImageLoadState.ERROR;
-          })
+        // 加载成功 - 根据来源类型显示图片
+        if (item.sourceType === ImageSourceType.RESOURCE && item.resource) {
+          Image(item.resource)
+            .width('100%')
+            .height('100%')
+            .objectFit(ImageFit.Contain)
+            .borderRadius($r('app.integer.image_borderRadius'))
+            .onComplete(() => {
+              Logger.info(TAG, `Resource image loaded at index ${index}`);
+            })
+            .onError(() => {
+              item.loadState = ImageLoadState.ERROR;
+              Logger.error(TAG, `Resource image load error at index ${index}`);
+            })
+        } else if (item.sourceType === ImageSourceType.URI && item.uri) {
+          // PhotoPicker返回的URI可以直接使用
+          Image(item.uri)
+            .width('100%')
+            .height('100%')
+            .objectFit(ImageFit.Contain)
+            .borderRadius($r('app.integer.image_borderRadius'))
+            .onComplete(() => {
+              Logger.info(TAG, `URI image loaded at index ${index}, uri: ${item.uri}`);
+            })
+            .onError(() => {
+              item.loadState = ImageLoadState.ERROR;
+              Logger.error(TAG, `URI image load error at index ${index}, uri: ${item.uri}`);
+            })
+        }
       }
     }
     .width('100%')
