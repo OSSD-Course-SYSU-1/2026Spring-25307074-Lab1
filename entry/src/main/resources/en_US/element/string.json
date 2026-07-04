@@ -1,0 +1,32 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "EffectKit"
+    },
+    {
+      "name": "permission_read_media_reason",
+      "value": "Used to access gallery images for color extraction and sharing"
+    },
+    {
+      "name": "permission_distributed_reason",
+      "value": "Used for cross-device file transfer and air drop feature"
+    },
+    {
+      "name": "permission_dm_reason",
+      "value": "Used for device discovery and cross-device migration"
+    },
+    {
+      "name": "permission_softbus_reason",
+      "value": "Used for distributed softbus communication to support multi-device collaboration"
+    }
+  ]
+}
