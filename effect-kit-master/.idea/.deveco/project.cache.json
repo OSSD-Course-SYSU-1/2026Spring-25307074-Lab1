@@ -1,0 +1,15 @@
+{
+	"CommonInfo":{
+		"project.ide.version":"6.1.0.850",
+		"current.select.product":"default",
+		"current.select.buildMode":""
+	},
+	"BuildOptions":{
+		"SELECT_BUILD_PRODUCT":"default",
+		"BUNDLE_NAME":"com.example.effectkit",
+		"BUILD_PATH":{
+			"OUTPUT_PATH":"C:\\Users\\lzf\\Desktop\\effect-kit-master (1)\\effect-kit-master\\build\\outputs\\default"
+		},
+		"SELECT_BUILD_MODE":""
+	}
+}
