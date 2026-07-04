@@ -43,6 +43,11 @@ import {
 } from '../utils/ColorPickerUtil';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo } from '@kit.CoreFileKit';
+import { DeviceShareUtil, ShareState, ShareDataConfig } from '../utils/DeviceShareUtil';
+import { DeviceUtil, DeviceType } from '../utils/DeviceUtil';
+import { systemShare } from '@kit.ShareKit';
+import { uniformTypeDescriptor as utd } from '@kit.ArkData';
+import { promptAction } from '@kit.ArkUI';
 
 const TAG: string = '[Index]';
 
@@ -93,6 +98,13 @@ struct Index {
   @State bottomSafeHeight: number = 0;
   // 设备类型
   @State is2in1Device: boolean = false;
+  @State isWatchDevice: boolean = false; // 是否为手表设备
+  // 分享相关状态
+  @State shareState: ShareState = ShareState.IDLE;
+  @State isShareSupported: boolean = false;
+  // 设备工具类实例
+  private deviceUtil: DeviceUtil = DeviceUtil.getInstance();
+  private deviceShareUtil: DeviceShareUtil = DeviceShareUtil.getInstance();
   // 是否为深色模式
   @State isDarkMode: boolean = false;
   // 状态栏文字颜色（根据背景色动态调整）
@@ -120,6 +132,14 @@ struct Index {
     
     // 初始化设备信息
     this.is2in1Device = deviceInfo.deviceType === '2in1';
+    
+    // 检测是否为手表设备
+    const deviceType = this.deviceUtil.getDeviceType();
+    this.isWatchDevice = deviceType === DeviceType.WEARABLE;
+    Logger.info(TAG, `Device type: ${deviceType}, isWatch: ${this.isWatchDevice}`);
+    
+    // 初始化分享功能
+    await this.initShare();
     
     // 初始化深色模式状态
     this.initDarkMode();
@@ -388,10 +408,23 @@ struct Index {
   build() {
     Column() {
       // 顶部状态栏占位
-      Row()
-        .width('100%')
-        .height(this.topSafeHeight)
-        .backgroundColor(this.currentBgColor)
+      Row() {
+        Row()
+          .width('100%')
+          .height(this.topSafeHeight)
+          .backgroundColor(this.currentBgColor)
+        
+        // 手表模式下，页码指示放在顶部
+        if (this.isWatchDevice) {
+          Text(`${this.currentIndex + 1}/${this.imgData.length}`)
+            .fontColor(Color.White)
+            .fontSize(7)
+            .position({ x: '50%', y: this.topSafeHeight + 2 })
+            .translate({ x: '-50%' })
+        }
+      }
+      .width('100%')
+      .backgroundColor(this.currentBgColor)
 
       // Swiper图片轮播
       Stack({ alignContent: Alignment.Center }) {
@@ -401,14 +434,14 @@ struct Index {
           }, (item: ImageItem, index: number) => index.toString())
         }
         .width(CommonConstants.FULL_PARENT)
-        .height(this.currentWidthBreakpoint === 'lg' || this.currentWidthBreakpoint === 'xl' 
-          ? 'calc(100% - 16vp)' : 'auto')
-        .padding({ left: $r('app.integer.swiper_padding_left'), right: $r('app.integer.swiper_padding_right') })
+        .height(this.isWatchDevice ? '65%' : (this.currentWidthBreakpoint === 'lg' || this.currentWidthBreakpoint === 'xl' 
+          ? 'calc(100% - 16vp)' : 'auto'))
+        .padding({ left: this.isWatchDevice ? 2 : $r('app.integer.swiper_padding_left'), right: this.isWatchDevice ? 2 : $r('app.integer.swiper_padding_right') })
         .autoPlay(true)
         .interval(this.swiperInterval)
         .duration(this.swiperDuration)
         .loop(true)
-        .itemSpace(this.swiperItemSpace)
+        .itemSpace(this.isWatchDevice ? 2 : this.swiperItemSpace)
         .indicator(false)
         .onChange((index: number) => {
           this.currentIndex = index;
@@ -421,11 +454,11 @@ struct Index {
           Button({ type: ButtonType.Circle }) {
             Text('<')
               .fontColor(Color.White)
-              .fontSize(24)
+              .fontSize(this.isWatchDevice ? 12 : 24)
               .fontWeight(FontWeight.Bold)
           }
-          .width(40)
-          .height(40)
+          .width(this.isWatchDevice ? 20 : 40)
+          .height(this.isWatchDevice ? 20 : 40)
           .backgroundColor('#66000000')
           .onClick(() => this.showPreviousImage())
 
@@ -435,61 +468,132 @@ struct Index {
           Button({ type: ButtonType.Circle }) {
             Text('>')
               .fontColor(Color.White)
-              .fontSize(24)
+              .fontSize(this.isWatchDevice ? 12 : 24)
               .fontWeight(FontWeight.Bold)
           }
-          .width(40)
-          .height(40)
+          .width(this.isWatchDevice ? 20 : 40)
+          .height(this.isWatchDevice ? 20 : 40)
           .backgroundColor('#66000000')
           .onClick(() => this.showNextImage())
         }
         .width('100%')
-        .padding({ left: 20, right: 20 })
-      }
-      .layoutWeight(1)
-
-      // 底部指示器和控制区
-      Row() {
-        // 页码指示
-        Text(`${this.currentIndex + 1} / ${this.imgData.length}`)
-          .fontColor(Color.White)
-          .fontSize(14)
-
-        Blank().layoutWeight(1)
-
-        // 导入图片按钮
-        Button('导入图片')
-          .fontSize(12)
-          .height(32)
-          .backgroundColor('#66000000')
-          .onClick(() => this.selectPhotosFromGallery())
-
-        // 清空按钮
-        Button('清空')
-          .fontSize(12)
-          .height(32)
-          .backgroundColor('#66000000')
-          .margin({ left: 8 })
-          .onClick(() => this.clearImageList())
-
-        // 取色策略切换按钮
-        Button(this.getStrategyName())
-          .fontSize(12)
-          .height(32)
-          .backgroundColor('#66000000')
-          .margin({ left: 8 })
-          .onClick(() => this.cycleColorStrategy())
+        .padding({ left: this.isWatchDevice ? 4 : 20, right: this.isWatchDevice ? 4 : 20 })
       }
       .width('100%')
-      .height(50)
-      .padding({ left: 20, right: 20 })
-      .backgroundColor(this.currentBgColor)
+      .height(this.isWatchDevice ? '65%' : 'auto')
+      .layoutWeight(this.isWatchDevice ? 0 : 1)
 
-      // 底部安全区域
-      Row()
+      // 底部控制区 - 手表模式下使用两行布局
+      if (this.isWatchDevice) {
+        // 手表模式：两行布局
+        Column() {
+          // 第一行：导入和清空
+          Row() {
+            Button('导入')
+              .fontSize(6)
+              .height(14)
+              .width('48%')
+              .backgroundColor('#66000000')
+              .onClick(() => this.selectPhotosFromGallery())
+
+            Blank().layoutWeight(1)
+
+            Button('清空')
+              .fontSize(6)
+              .height(14)
+              .width('48%')
+              .backgroundColor('#66000000')
+              .onClick(() => this.clearImageList())
+          }
+          .width('100%')
+          .height(16)
+          .margin({ bottom: 1 })
+
+          // 第二行：取色和分享
+          Row() {
+            Button('取色')
+              .fontSize(6)
+              .height(14)
+              .width('48%')
+              .backgroundColor('#66000000')
+              .onClick(() => this.cycleColorStrategy())
+
+            Blank().layoutWeight(1)
+
+            Button('分享')
+              .fontSize(6)
+              .height(14)
+              .width('48%')
+              .backgroundColor('#660066FF')
+              .enabled(this.isShareSupported)
+              .onClick(() => this.handleShare())
+          }
+          .width('100%')
+          .height(16)
+        }
         .width('100%')
-        .height(this.bottomSafeHeight)
+        .height(30)
+        .padding({ left: 1, right: 1 })
         .backgroundColor(this.currentBgColor)
+      } else {
+        // 普通模式：单行布局
+        Row() {
+          // 页码指示
+          Text(`${this.currentIndex + 1}/${this.imgData.length}`)
+            .fontColor(Color.White)
+            .fontSize(14)
+
+          Blank().layoutWeight(1)
+
+          // 导入图片按钮
+          Button('导入图片')
+            .fontSize(12)
+            .height(32)
+            .padding({ left: 8, right: 8 })
+            .backgroundColor('#66000000')
+            .onClick(() => this.selectPhotosFromGallery())
+
+          // 清空按钮
+          Button('清空')
+            .fontSize(12)
+            .height(32)
+            .padding({ left: 8, right: 8 })
+            .backgroundColor('#66000000')
+            .margin({ left: 8 })
+            .onClick(() => this.clearImageList())
+
+          // 取色策略切换按钮
+          Button(this.getStrategyName())
+            .fontSize(12)
+            .height(32)
+            .padding({ left: 8, right: 8 })
+            .backgroundColor('#66000000')
+            .margin({ left: 8 })
+            .onClick(() => this.cycleColorStrategy())
+          
+          // 分享按钮
+          Button('分享')
+            .fontSize(12)
+            .height(32)
+            .padding({ left: 8, right: 8 })
+            .backgroundColor('#660066FF')
+            .margin({ left: 8 })
+            .enabled(this.isShareSupported)
+            .onClick(() => this.handleShare())
+        }
+        .width('100%')
+        .height(50)
+        .padding({ left: 20, right: 20 })
+        .backgroundColor(this.currentBgColor)
+      }
+
+      // 底部安全区域（手表模式下不需要）
+      if (!this.isWatchDevice) {
+        Row()
+          .width('100%')
+          .height(this.bottomSafeHeight)
+          .backgroundColor(this.currentBgColor)
+      }
     }
     .width(CommonConstants.FULL_PARENT)
     .height(CommonConstants.FULL_PARENT)
@@ -599,6 +703,56 @@ struct Index {
         return '前N颜色';
       default:
         return '智能取色';
+    }
+  }
+  
+  /**
+   * 初始化分享功能
+   */
+  private async initShare(): Promise<void> {
+    await this.deviceShareUtil.init(this.context);
+    const capability = this.deviceShareUtil.checkDeviceCapability();
+    this.isShareSupported = capability.isSupported;
+    Logger.info(TAG, `Share supported: ${this.isShareSupported}, canUseSystemShare: ${capability.canUseSystemShare}`);
+  }
+  
+  /**
+   * 处理分享按钮点击
+   */
+  private async handleShare(): Promise<void> {
+    if (!this.isShareSupported) {
+      promptAction.showToast({ message: '当前设备不支持分享', duration: 2000 });
+      return;
+    }
+    
+    // 检查是否可以使用系统分享面板
+    if (this.deviceShareUtil.canUseSystemShare()) {
+      // 获取当前图片信息
+      const currentItem = this.imgData[this.currentIndex];
+      let shareContent = '';
+      let shareTitle = '分享图片';
+      
+      if (currentItem.sourceType === ImageSourceType.URI && currentItem.uri) {
+        shareContent = currentItem.uri;
+        shareTitle = '分享图片';
+      } else {
+        shareContent = `图片 ${this.currentIndex + 1}`;
+        shareTitle = '分享';
+      }
+      
+      const shareData: ShareDataConfig = {
+        utdType: utd.UniformDataType.HYPERLINK,
+        content: shareContent,
+        title: shareTitle,
+        description: '来自Effect Kit'
+      };
+      
+      const success = await this.deviceShareUtil.showSystemSharePanel(shareData);
+      if (!success) {
+        promptAction.showToast({ message: '打开分享面板失败', duration: 2000 });
+      }
+    } else {
+      promptAction.showToast({ message: '请使用真机测试分享功能', duration: 2000 });
     }
   }
 }

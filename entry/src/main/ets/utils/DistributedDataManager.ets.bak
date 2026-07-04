@@ -1,0 +1,325 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * DistributedDataManager - 分布式数据管理器
+ * 
+ * 功能说明：
+ * 1. 管理跨设备数据同步
+ * 2. 支持图片浏览状态同步
+ * 3. 支持协同播放控制
+ * 
+ * 使用说明：
+ * 1. 初始化时调用init()创建分布式数据库
+ * 2. 使用put()和get()进行数据存取
+ * 3. 使用subscribe()订阅数据变化
+ */
+
+import { distributedData } from '@kit.DistributedData';
+import { common } from '@kit.AbilityKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import Logger from './Logger';
+
+const TAG: string = '[DistributedDataManager]';
+
+/** 分布式数据配置 */
+export interface DistributedDataConfig {
+  storeId: string;          // 数据库ID
+  bundleName: string;       // 应用包名
+}
+
+/** 数据变化回调类型 */
+export type DataChangeCallback = (key: string, value: distributedData.Value | undefined) => void;
+
+/**
+ * 分布式数据管理器（单例）
+ */
+export class DistributedDataManager {
+  private static instance: DistributedDataManager;
+  private kvManager: distributedData.KVManager | null = null;
+  private kvStore: distributedData.SingleKVStore | null = null;
+  private context: common.UIAbilityContext | null = null;
+  private isInitialized: boolean = false;
+  
+  // 数据变化回调映射
+  private changeCallbacks: Map<string, DataChangeCallback[]> = new Map();
+  
+  // 默认配置
+  private static readonly DEFAULT_STORE_ID = 'effectkit_distributed_store';
+  private static readonly DEFAULT_BUNDLE_NAME = 'com.huawei.effectkitsample';
+  
+  private constructor() {}
+  
+  /**
+   * 获取单例实例
+   */
+  public static getInstance(): DistributedDataManager {
+    if (!DistributedDataManager.instance) {
+      DistributedDataManager.instance = new DistributedDataManager();
+    }
+    return DistributedDataManager.instance;
+  }
+  
+  /**
+   * 初始化分布式数据管理器
+   */
+  public async init(context: common.UIAbilityContext): Promise<boolean> {
+    if (this.isInitialized) {
+      Logger.warn(TAG, 'DistributedDataManager already initialized');
+      return true;
+    }
+    
+    this.context = context;
+    
+    try {
+      // 创建KVManager
+      const kvManagerConfig: distributedData.KVManagerConfig = {
+        bundleName: context.applicationInfo.name,
+        context: context
+      };
+      
+      this.kvManager = distributedData.createKVManager(kvManagerConfig);
+      Logger.info(TAG, 'KVManager created successfully');
+      
+      // 创建SingleKVStore（单版本数据库）
+      const options: distributedData.Options = {
+        createIfMissing: true,
+        encrypt: false,
+        backup: false,
+        autoSync: true,
+        kvStoreType: distributedData.KVStoreType.SINGLE_VERSION,
+        securityLevel: distributedData.SecurityLevel.S1
+      };
+      
+      const storeId = DistributedDataManager.DEFAULT_STORE_ID;
+      this.kvStore = await this.kvManager.getKVStore(storeId, options) as distributedData.SingleKVStore;
+      Logger.info(TAG, `KVStore created successfully: ${storeId}`);
+      
+      // 注册数据变化监听
+      this.registerDataChangeListener();
+      
+      this.isInitialized = true;
+      return true;
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to init DistributedDataManager. Code: ${err.code}, message: ${err.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * 注册数据变化监听
+   */
+  private registerDataChangeListener(): void {
+    if (!this.kvStore) {
+      Logger.error(TAG, 'KVStore is null');
+      return;
+    }
+    
+    try {
+      this.kvStore.on('dataChange', distributedData.SubscribeType.SUBSCRIBE_TYPE_ALL, (data: distributedData.ChangeData) => {
+        Logger.info(TAG, `Data changed, update count: ${data.updateEntries?.length || 0}`);
+        
+        // 处理数据变化
+        if (data.updateEntries && data.updateEntries.length > 0) {
+          for (const entry of data.updateEntries as distributedData.Entry[]) {
+            const key: string = entry.key;
+            const value: distributedData.Value = entry.value;
+            
+            // 触发对应回调
+            const callbacks = this.changeCallbacks.get(key);
+            if (callbacks && callbacks.length > 0) {
+              for (const callback of callbacks) {
+                callback(key, value);
+              }
+            }
+            
+            // 触发通配符回调
+            const allCallbacks = this.changeCallbacks.get('*');
+            if (allCallbacks && allCallbacks.length > 0) {
+              for (const callback of allCallbacks) {
+                callback(key, value);
+              }
+            }
+          }
+        }
+      });
+      
+      Logger.info(TAG, 'Data change listener registered');
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to register data change listener. Code: ${err.code}, message: ${err.message}`);
+    }
+  }
+  
+  /**
+   * 存储数据
+   */
+  public async put(key: string, value: string | number | boolean | Uint8Array): Promise<boolean> {
+    if (!this.kvStore) {
+      Logger.error(TAG, 'KVStore is null');
+      return false;
+    }
+    
+    try {
+      await this.kvStore.put(key, value);
+      Logger.info(TAG, `Data put successfully: ${key}`);
+      return true;
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to put data. Key: ${key}, Code: ${err.code}, message: ${err.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * 获取数据
+   */
+  public async get(key: string): Promise<distributedData.Value | undefined> {
+    if (!this.kvStore) {
+      Logger.error(TAG, 'KVStore is null');
+      return undefined;
+    }
+    
+    try {
+      const value: distributedData.Value | undefined = await this.kvStore.get(key);
+      Logger.info(TAG, `Data get successfully: ${key}`);
+      return value;
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to get data. Key: ${key}, Code: ${err.code}, message: ${err.message}`);
+      return undefined;
+    }
+  }
+  
+  /**
+   * 删除数据
+   */
+  public async delete(key: string): Promise<boolean> {
+    if (!this.kvStore) {
+      Logger.error(TAG, 'KVStore is null');
+      return false;
+    }
+    
+    try {
+      await this.kvStore.delete(key);
+      Logger.info(TAG, `Data deleted successfully: ${key}`);
+      return true;
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to delete data. Key: ${key}, Code: ${err.code}, message: ${err.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * 订阅数据变化
+   * @param key 数据键，使用 '*' 订阅所有数据变化
+   * @param callback 回调函数
+   */
+  public subscribe(key: string, callback: DataChangeCallback): void {
+    if (!this.changeCallbacks.has(key)) {
+      this.changeCallbacks.set(key, []);
+    }
+    
+    const callbacks = this.changeCallbacks.get(key);
+    if (callbacks) {
+      callbacks.push(callback);
+      Logger.info(TAG, `Subscribed to data change: ${key}`);
+    }
+  }
+  
+  /**
+   * 取消订阅数据变化
+   */
+  public unsubscribe(key: string, callback?: DataChangeCallback): void {
+    if (!callback) {
+      // 删除该key的所有回调
+      this.changeCallbacks.delete(key);
+      Logger.info(TAG, `Unsubscribed all callbacks for: ${key}`);
+    } else {
+      // 删除特定回调
+      const callbacks = this.changeCallbacks.get(key);
+      if (callbacks) {
+        const index = callbacks.indexOf(callback);
+        if (index > -1) {
+          callbacks.splice(index, 1);
+          Logger.info(TAG, `Unsubscribed callback for: ${key}`);
+        }
+      }
+    }
+  }
+  
+  /**
+   * 同步数据到其他设备
+   * @param deviceIds 目标设备ID列表，为空则同步到所有设备
+   */
+  public async sync(deviceIds?: string[]): Promise<boolean> {
+    if (!this.kvStore) {
+      Logger.error(TAG, 'KVStore is null');
+      return false;
+    }
+    
+    try {
+      const mode: distributedData.SyncMode = distributedData.SyncMode.PUSH_PULL;
+      
+      if (deviceIds && deviceIds.length > 0) {
+        await this.kvStore.sync(deviceIds, mode);
+        Logger.info(TAG, `Data synced to devices: ${deviceIds.join(', ')}`);
+      } else {
+        // 同步到所有设备
+        await this.kvStore.sync('', mode);
+        Logger.info(TAG, 'Data synced to all devices');
+      }
+      
+      return true;
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to sync data. Code: ${err.code}, message: ${err.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * 释放资源
+   */
+  public async release(): Promise<void> {
+    try {
+      if (this.kvStore && this.kvManager) {
+        await this.kvManager.closeKVStore(DistributedDataManager.DEFAULT_STORE_ID);
+        Logger.info(TAG, 'KVStore closed');
+      }
+      
+      this.kvStore = null;
+      this.kvManager = null;
+      this.isInitialized = false;
+      this.changeCallbacks.clear();
+      
+      Logger.info(TAG, 'DistributedDataManager released');
+    } catch (error) {
+      const err = error as BusinessError;
+      Logger.error(TAG, `Failed to release. Code: ${err.code}, message: ${err.message}`);
+    }
+  }
+  
+  /**
+   * 检查是否已初始化
+   */
+  public isReady(): boolean {
+    return this.isInitialized && this.kvStore !== null;
+  }
+}
+
+export default DistributedDataManager;

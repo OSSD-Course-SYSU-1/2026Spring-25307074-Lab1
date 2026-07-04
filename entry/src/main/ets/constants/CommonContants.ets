@@ -21,7 +21,7 @@ export default class CommonConstants {
   /**
    * Window background color.
    * */
-  public static readonly START_WINDOW_BACKGROUND: string = '#FFFFFFF';
+  public static readonly START_WINDOW_BACKGROUND: string = '#FFFFFFFF';
   /**
    * Swiper interval.
    * */

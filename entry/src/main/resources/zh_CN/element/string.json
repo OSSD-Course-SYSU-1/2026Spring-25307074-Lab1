@@ -11,6 +11,22 @@
     {
       "name": "EntryAbility_label",
       "value": "EffectKit"
+    },
+    {
+      "name": "permission_read_media_reason",
+      "value": "用于访问相册图片以进行颜色提取和分享"
+    },
+    {
+      "name": "permission_distributed_reason",
+      "value": "用于跨设备文件传输和隔空投送功能"
+    },
+    {
+      "name": "permission_dm_reason",
+      "value": "用于设备发现和跨端迁移功能"
+    },
+    {
+      "name": "permission_softbus_reason",
+      "value": "用于分布式软总线通信，支持多端协同"
     }
   ]
 }
